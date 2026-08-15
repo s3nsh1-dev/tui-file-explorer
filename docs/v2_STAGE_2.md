@@ -1,41 +1,106 @@
 # v2 — Stage 2: Real Application
 
 > **Agent mentality for this stage:** Craftsperson — see `00_PROJECT_INSPIRATION.md §7`.
-> **Status:** ⚠ **PROVISIONAL — not frozen.** Written during planning on 2026-08-15, before Stage 1
-> existed, at the maintainer's request for a full three-stage roadmap.
+> **Status:** In progress. Spec **reconciled and frozen** at the first commit of `stage-2`,
+> 2026-08-16. Drafted 2026-08-15 as a provisional roadmap, then reconciled against what Stage 1
+> actually produced.
 >
-> **Branch:** `stage-2` — cut from `develop` at kickoff, merged back only after CHECKPOINT 2
+> **Branch:** `stage-2`, cut from `develop` at `9ba2bf1`. Merged back only after CHECKPOINT 2
 > (`AGENTS.md §5.1`).
 > **Retrospective:** `docs/version/stage2.md`, written at S2-18.
 >
-> **This spec freezes at the kickoff of Stage 2, not now.** Before the first commit of this stage,
-> the agent must: (1) paste v1's `## Handoff` into `§0` below, (2) reconcile this spec against what
-> Stage 1 actually produced, (3) present the reconciled spec for human review, and only then start
-> work. Anything below that survives reconciliation freezes; anything that Stage 1 invalidated gets
-> corrected **before** the freeze and noted in `§9`. This is the one window in which editing above
-> the BUILD LINE is legitimate — see `CLAUDE.md §6`.
+> **Review gate waived, deliberately and on the record.** `CLAUDE.md §6` step 5 requires presenting
+> the reconciled spec for human review before work starts. The maintainer waived it on 2026-08-16:
+> *"proceed with stage 2 100% implementation … you have free hand to take decisions just explain your
+> logic in final version doc."* Every judgement call therefore gets its reasoning written into
+> `docs/version/stage2.md §2` — that document is the substitute for the review that did not happen,
+> which raises its standard rather than lowering it. Recorded in `§9 Deviations`.
+>
+> **What reconciliation changed, all before the freeze:**
+> - `S2-02` — Ink 7 ships `useWindowSize()`. The hand-rolled resize hook leaves scope.
+> - `S2-15` — Ink 7 ships `render(_, { alternateScreen: true })`. Raw `\x1b[?1049h` leaves scope.
+> - `S2-06` — `sanitizeName` already exists and is tested in `src/app.tsx`. This task now *moves and
+>   extends* it rather than writing it from nothing.
+> - `S2-14` — a minimal error state already shipped in Stage 1 (an unhandled `EACCES` was crashing
+>   the process). This task now *upgrades* it rather than introducing it.
 
 ---
 
 ## 0. Entry Point — start here
 
-> ⛔ **PLACEHOLDER.** Fill this from `v1_STAGE_1.md §10 Handoff` at Stage 2 kickoff. Do not start
-> `S2-01` while this section still says PLACEHOLDER — that means the previous stage did not close out
-> properly, which is a `AGENTS.md §9` stop-and-ask condition.
+**If you are joining at this stage, this section is all the history you need.**
 
-**State of the codebase.** _(from v1 Handoff)_
+**State of the codebase.**
 
-**Architecture as it stands.** _(from v1 Handoff)_
+`glim` runs. `pnpm build && node dist/cli.js ~` opens a single-pane listing; `↑↓`/`kj` move a `❯`
+cursor that clamps at both ends, `⏎`/`→`/`l` descends, `←`/`h` ascends, `q` quits. A bad path
+argument is rejected before Ink mounts with one stderr line and exit code 2. When stdin is not a TTY
+the listing renders read-only instead of crashing. Unreadable directories show a sanitized one-line
+error and stay navigable. 36 tests across 7 files; `pnpm typecheck / lint / test / build` all green.
+Roughly 337 lines of source, 656 of test.
+
+**Architecture as it stands.**
+
+```
+src/
+├── cli.tsx     meow · resolveTarget() BEFORE render · exit codes 2/130/143/1
+│               · signal + uncaughtException handlers that unmount to restore
+│                 the terminal
+└── app.tsx     ONE FILE, on purpose (v1 §4). Contains:
+                  sanitizeName()      ADR-0005 chokepoint — <U+XXXX> escaping
+                  describeFsError()   errno → one sanitized line
+                  resolveTarget()     startup path validation (pure, exported)
+                  compareEntries()    dirs first, then case-insensitive name
+                  displayPath()       $HOME → ~
+                  App                 useState×4 + one readdir effect
+                                      + ONE useInput, gated { isActive }
+
+test/
+├── helpers/render.tsx   LOCAL harness, replaces ink-testing-library.
+│                        Configurable columns/rows/stdinIsTTY. Load-bearing.
+├── helpers/fixture.ts   absolute fixture paths, cwd-independent
+└── *.test.tsx           app · cursor · navigation · sanitize · target
+                         · lifecycle · errors
+
+  keypress → useInput(gated) → setState → render
+  cwd change → useEffect → readdir → try/catch → entries | error
+  every rendered string → sanitizeName() → <Text>
+```
 
 **Load-bearing decisions carried in.**
-- ADR-0001 pnpm · ADR-0002 TypeScript 6.0.3 pin · ADR-0003 Node 22 / Ink 7 floor ·
-  ADR-0004 npm name deferred · **ADR-0005 read-only by construction + sanitization chokepoint**
-- _(plus whatever v1 adds)_
 
-**Known debt carried forward.** _(from v1 Handoff)_
+- **ADR-0001** pnpm; settings live in `pnpm-workspace.yaml` under `allowBuilds` — pnpm 11 renamed it
+  from `onlyBuiltDependencies` and ignores the `package.json` `pnpm` field entirely.
+- **ADR-0002** `typescript@6.0.3` pinned exactly. TS 7 disables typescript-eslint and with it the
+  zero-`any` floor.
+- **ADR-0003** Node ≥ 22, Ink 7.1.1. `00_PROJECT_INSPIRATION.md §4` is permanently stale; do not fix it.
+- **ADR-0005** read-only by construction, enforced by ESLint bans on mutating `node:fs`,
+  `child_process` and all networking — in `src/` only. `test/` may mutate to build fixtures.
+- **Ink 7 supersedes two `AGENTS.md §8` instructions:** `useWindowSize()` exists, and
+  `render(node, { alternateScreen: true })` exists. Both verified against the installed `.d.ts`.
+- **`isRawModeSupported` cannot be trusted as a boolean.** It is `stdin.isTTY`, which Node sets to
+  `undefined` on non-TTY streams. `app.tsx` routes it through `unknown` and narrows. Removing that
+  round-trip reintroduces a shipped crash.
+- **`test/helpers/render.tsx` is not boilerplate.** `ink-testing-library@4` hardcodes `columns = 100`,
+  has no `rows`, and forces `isTTY = true`. It cannot express non-TTY tests or two-size golden frames.
 
-**Read `v1_STAGE_1.md` only if:** you need the rationale for the one-file `app.tsx`, or the record of
-which Ink 7 API assumptions were verified against the installed `.d.ts` files.
+**Known debt carried forward.**
+
+- `S2-03` — **no viewport windowing.** Every row renders; a 40 000-entry directory hangs the terminal.
+  Out of scope in v1 by design; a hard requirement here.
+- `S3-04` — **no request sequencing.** Key-mash can resolve `readdir` out of order, so the listing may
+  not match the header. Needs `AbortController` + a monotonic request id. **Do not patch it in this
+  stage** — a partial fix reads as "handled" and stops anyone looking.
+- `S3-07` — `resolveTarget` uses `stat`, which follows symlinks. No cycle guard, no depth cap.
+- `S2-14` — the error state is one plain line, no colour, no retry.
+- `S3-18` — npm package name unresolved; `private: true` is the interlock (ADR-0004).
+- `S2-01` — cursor resets to index 0 on every navigation. The name-anchored cursor replaces this;
+  ascending to the parent should ideally land on the directory you came from.
+
+**Read `v1_STAGE_1.md` only if:** you need the rationale for the one-file `app.tsx` before
+refactoring it, or the record of which Ink 7 API assumptions were verified against the installed
+types. For the narrative version — choices with their costs, the bugs and their causes — read
+[`docs/version/stage1.md`](version/stage1.md).
 
 ---
 
@@ -318,6 +383,7 @@ one commit per task ID with a `Verified:` line · merged to `develop` only after
 
 | Task | Spec said | Reality | Why | Resolution |
 |---|---|---|---|---|
+| kickoff | `CLAUDE.md §6` step 5: present the reconciled spec for human review, start only after approval | Reconciled, frozen, and started in one session with no review stop | Maintainer instruction 2026-08-16: *"proceed with stage 2 100% implementation … you have free hand to take decisions just explain your logic in final version doc"* | Accepted. The obligation moves rather than disappearing: every judgement call is argued in `docs/version/stage2.md §2`. Reconciliation changes are listed in the Status block above, made **before** the freeze |
 
 ---
 
