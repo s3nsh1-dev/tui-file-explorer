@@ -1,0 +1,216 @@
+import type { Action } from './actions.js';
+
+export type Mode = 'normal' | 'filter' | 'help';
+export type SortKey = 'name' | 'size' | 'mtime' | 'ext';
+export type Status = 'loading' | 'ready' | 'error';
+
+export type Entry = {
+  readonly name: string;
+  readonly isDirectory: boolean;
+  readonly isSymlink: boolean;
+  readonly size: number;
+  readonly mtimeMs: number;
+};
+
+export type State = {
+  readonly dir: string;
+  readonly status: Status;
+  readonly error: string | undefined;
+  /** Everything readdir returned, unfiltered and unsorted. */
+  readonly entries: readonly Entry[];
+  /**
+   * DERIVED: entries after hidden-file filtering, text filtering and sorting.
+   *
+   * Stored rather than computed per render on purpose. It is recomputed only
+   * inside `recompute()`, which runs on the transitions that can change it —
+   * so a 40,000-entry directory pays for one sort per keypress instead of one
+   * per render. Never assign to it outside `recompute()`.
+   */
+  readonly visible: readonly Entry[];
+  /**
+   * The cursor is anchored to a NAME, not an index (ADR-0006). An index points
+   * at a different file after every sort or filter change; a name keeps the
+   * user looking at what they were looking at.
+   */
+  readonly cursorName: string | null;
+  readonly filter: string;
+  /** What to restore if filter mode is cancelled with Escape. */
+  readonly filterBackup: { readonly filter: string; readonly cursorName: string | null } | null;
+  readonly sortKey: SortKey;
+  readonly sortReverse: boolean;
+  readonly showHidden: boolean;
+  readonly mode: Mode;
+};
+
+export const initialState = (dir: string): State => ({
+  dir,
+  status: 'loading',
+  error: undefined,
+  entries: [],
+  visible: [],
+  cursorName: null,
+  filter: '',
+  filterBackup: null,
+  sortKey: 'name',
+  sortReverse: false,
+  showHidden: false,
+  mode: 'normal',
+});
+
+const SORT_CYCLE: readonly SortKey[] = ['name', 'size', 'mtime', 'ext'];
+
+const byName = (a: Entry, b: Entry): number =>
+  a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+
+const extensionOf = (name: string): string => {
+  const dot = name.lastIndexOf('.');
+  // `> 0`, not `>= 0`: a leading dot makes a hidden file, not an extension.
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+};
+
+/** Every comparator falls back to name, so sorting is total and stable-looking. */
+const COMPARATORS: Record<SortKey, (a: Entry, b: Entry) => number> = {
+  name: byName,
+  size: (a, b) => b.size - a.size || byName(a, b),
+  mtime: (a, b) => b.mtimeMs - a.mtimeMs || byName(a, b),
+  ext: (a, b) => extensionOf(a.name).localeCompare(extensionOf(b.name)) || byName(a, b),
+};
+
+const makeComparator =
+  (key: SortKey, reverse: boolean) =>
+  (a: Entry, b: Entry): number => {
+    // Directories first under every key and in both directions. Reversing the
+    // sort should reorder files, not scatter directories through them.
+    if (a.isDirectory !== b.isDirectory) {
+      return a.isDirectory ? -1 : 1;
+    }
+    const result = COMPARATORS[key](a, b);
+    return reverse ? -result : result;
+  };
+
+/**
+ * Re-anchor the cursor after the visible list changed.
+ * Keeps the requested name if it survived; otherwise falls back to the first
+ * row, which is why the cursor can never point past the end.
+ */
+const anchor = (visible: readonly Entry[], wanted: string | null): string | null => {
+  if (visible.length === 0) return null;
+  if (wanted !== null && visible.some((entry) => entry.name === wanted)) return wanted;
+  return visible[0]?.name ?? null;
+};
+
+/**
+ * The single place `visible` and `cursorName` are allowed to change together.
+ * Every clamping invariant lives here, which is the entire argument for a
+ * reducer over three useStates — see ADR-0006.
+ */
+const recompute = (state: State, keepCursorOn: string | null): State => {
+  const needle = state.filter.toLowerCase();
+  const filtered = state.entries.filter((entry) => {
+    if (!state.showHidden && entry.name.startsWith('.')) return false;
+    return needle === '' || entry.name.toLowerCase().includes(needle);
+  });
+
+  const visible = filtered.sort(makeComparator(state.sortKey, state.sortReverse));
+  return { ...state, visible, cursorName: anchor(visible, keepCursorOn) };
+};
+
+/** Index of the cursor in the visible list, or -1 when nothing is selectable. */
+export const cursorIndex = (state: State): number => {
+  if (state.visible.length === 0) return -1;
+  const index = state.visible.findIndex((entry) => entry.name === state.cursorName);
+  return index >= 0 ? index : 0;
+};
+
+export const selectedEntry = (state: State): Entry | undefined => {
+  const index = cursorIndex(state);
+  return index < 0 ? undefined : state.visible[index];
+};
+
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'NAVIGATE':
+      // Sort key and hidden-file visibility are user preferences and survive.
+      // The filter is about *this* listing and does not.
+      return recompute(
+        {
+          ...state,
+          dir: action.dir,
+          status: 'loading',
+          error: undefined,
+          entries: [],
+          cursorName: null,
+          filter: '',
+          filterBackup: null,
+          mode: 'normal',
+        },
+        null,
+      );
+
+    case 'LOADED':
+      // A result for a directory we already left is stale. Dropping it here is
+      // a partial defence only — real request sequencing is S3-04.
+      if (action.dir !== state.dir) return state;
+      return recompute(
+        { ...state, status: 'ready', error: undefined, entries: action.entries },
+        state.cursorName,
+      );
+
+    case 'FAILED':
+      if (action.dir !== state.dir) return state;
+      return recompute(
+        { ...state, status: 'error', error: action.message, entries: [] },
+        null,
+      );
+
+    case 'MOVE': {
+      const index = cursorIndex(state);
+      if (index < 0) return state;
+      const target = Math.min(Math.max(index + action.delta, 0), state.visible.length - 1);
+      return { ...state, cursorName: state.visible[target]?.name ?? state.cursorName };
+    }
+
+    case 'MOVE_TO': {
+      if (state.visible.length === 0) return state;
+      const target = action.position === 'start' ? 0 : state.visible.length - 1;
+      return { ...state, cursorName: state.visible[target]?.name ?? state.cursorName };
+    }
+
+    case 'TOGGLE_HIDDEN':
+      return recompute({ ...state, showHidden: !state.showHidden }, state.cursorName);
+
+    case 'CYCLE_SORT': {
+      const position = SORT_CYCLE.indexOf(state.sortKey);
+      const next = SORT_CYCLE[(position + 1) % SORT_CYCLE.length] ?? 'name';
+      return recompute({ ...state, sortKey: next }, state.cursorName);
+    }
+
+    case 'REVERSE_SORT':
+      return recompute({ ...state, sortReverse: !state.sortReverse }, state.cursorName);
+
+    case 'SET_MODE':
+      // Snapshot on the way in, so Escape can put everything back.
+      if (action.mode === 'filter' && state.mode !== 'filter') {
+        return {
+          ...state,
+          mode: 'filter',
+          filterBackup: { filter: state.filter, cursorName: state.cursorName },
+        };
+      }
+      return { ...state, mode: action.mode };
+
+    case 'FILTER_INPUT':
+      return recompute({ ...state, filter: action.value }, state.cursorName);
+
+    case 'FILTER_COMMIT':
+      return { ...state, mode: 'normal', filterBackup: null };
+
+    case 'FILTER_CANCEL': {
+      const backup = state.filterBackup;
+      return recompute(
+        { ...state, mode: 'normal', filter: backup?.filter ?? '', filterBackup: null },
+        backup?.cursorName ?? state.cursorName,
+      );
+    }
+  }
+};
