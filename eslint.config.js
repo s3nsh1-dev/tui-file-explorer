@@ -52,7 +52,9 @@ const NO_NET = 'ADR-0005: glim makes no network calls. Not telemetry, not update
 const NO_WRITE = 'ADR-0005: glim is read-only by construction. Reads only.';
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'coverage/**'] },
+  // test/fixtures is data the app reads, not source we own. Some of it is
+  // deliberately malformed or hostile (see the U+202E filename).
+  { ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'test/fixtures/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

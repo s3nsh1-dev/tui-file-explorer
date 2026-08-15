@@ -28,5 +28,8 @@
     "types": ["node"]
   },
   "include": ["src/**/*", "test/**/*", "*.config.ts"],
-  "exclude": ["node_modules", "dist"]
+  // Fixtures are DATA, not code. test/fixtures/basic/src/index.ts is a file
+  // whose only job is to exist and be listed; typechecking it fails on
+  // verbatimModuleSyntax and tells us nothing.
+  "exclude": ["node_modules", "dist", "test/fixtures"]
 }
