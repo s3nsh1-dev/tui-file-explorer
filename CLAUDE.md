@@ -10,14 +10,15 @@
 
 ```bash
 cat docs/STATE.md
-git branch --show-current     # must be stage-{N}, never main — AGENTS.md §5.1
+git branch --show-current     # stage-{N} for stage work, develop for governance docs.
+                              # NEVER main — agents don't touch it. AGENTS.md §5.1
 git log --oneline -10
 git status
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
-**If that second command prints `main`, stop.** You are one keystroke from writing implementation
-code onto the reviewed baseline. Cut or check out `stage-{N}` first.
+**If that second command prints `main`, stop.** `main` is human-only — you do not commit to it,
+merge into it, or check it out to make a change. Switch to `develop`, or cut/check out `stage-{N}`.
 
 > **pnpm, not npm** (`docs/adr/ADR-0001`). Also read `docs/adr/` before the stage doc on your first
 > session — five ADRs were written during planning and two of them (0002 TypeScript pin, 0003 Ink 7 /
@@ -152,8 +153,8 @@ Rules:
 
 When a stage begins:
 
-1. **Cut the branch first:** `git checkout main && git checkout -b stage-{N}`. Everything below
-   happens on that branch. (`AGENTS.md §5.1`)
+1. **Cut the branch first:** `git checkout develop && git checkout -b stage-{N}`. Everything below
+   happens on that branch. Not `main` — ever. (`AGENTS.md §5.1`)
 2. `cp docs/_TEMPLATE_STAGE.md docs/v{N}_STAGE_{N}.md`
 3. Paste the previous stage's `## Handoff` content into `§0 Entry Point`. (For v1, delete §0.)
 4. Fill the spec sections **above the BUILD LINE**: intent, scope in/out, approach, architecture
@@ -185,8 +186,9 @@ Writing code before step 6 means the spec gets bent to match whatever you happen
    log thin, you cannot write this section honestly now, and that is the cost of skipping it.
 6. Update `docs/STATE.md`, including the `Branch` field.
 7. **Stop and request sign-off.** Do not start the next stage. Do not merge.
-8. **After** sign-off: merge `stage-{N}` → `main`, and record the merge date and the human's name in
-   the retrospective's *At a glance* table. An agent never fills in "Signed off by".
+8. **After** sign-off: merge `stage-{N}` → `develop`, and record the merge date and the human's name
+   in the retrospective's *At a glance* table. An agent never fills in "Signed off by", and never
+   merges anything to `main` — `main` moves only when the maintainer moves it.
 
 ---
 

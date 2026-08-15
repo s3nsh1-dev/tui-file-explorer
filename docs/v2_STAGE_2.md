@@ -4,7 +4,7 @@
 > **Status:** ⚠ **PROVISIONAL — not frozen.** Written during planning on 2026-08-15, before Stage 1
 > existed, at the maintainer's request for a full three-stage roadmap.
 >
-> **Branch:** `stage-2` — cut from `main` at kickoff, merged back only after CHECKPOINT 2
+> **Branch:** `stage-2` — cut from `develop` at kickoff, merged back only after CHECKPOINT 2
 > (`AGENTS.md §5.1`).
 > **Retrospective:** `docs/version/stage2.md`, written at S2-18.
 >
@@ -252,7 +252,7 @@ and retrofitting either into finished components is a rewrite.
 | S2-17 | Log, ADRs, `docs/STATE.md`, `§10 Handoff` — **including the full Stage 3 `core/` ⟂ `ui/` split plan**, so it is reviewed at Checkpoint 2 rather than needing a third interruption (`v3 §5`) | S2-16 | docs |
 | S2-18 | `docs/version/stage2.md` — narrative retrospective (`AGENTS.md §4.6`), written **before** the gate | S2-17 | docs |
 | S2-19 | **CHECKPOINT 2** — maintainer runs it | S2-18 | **L4 HUMAN GATE** |
-| S2-20 | Merge `stage-2` → `main`. **Only after S2-19 passes.** | S2-19 | — |
+| S2-20 | Merge `stage-2` → `develop`. **Only after S2-19 passes.** | S2-19 | — |
 
 ---
 
@@ -297,8 +297,8 @@ and retrofitting either into finished components is a rewrite.
 **Docs:** log complete · ADRs written · `docs/STATE.md` updated (incl. `Branch`) · `§10 Handoff`
 written · **`docs/version/stage2.md` retrospective written** (`AGENTS.md §4.6`).
 
-**Branch (`AGENTS.md §5.1`):** all work on `stage-2`, cut from `main` after Stage 1 was signed off ·
-one commit per task ID with a `Verified:` line · merged to `main` only after CHECKPOINT 2 (S2-20).
+**Branch (`AGENTS.md §5.1`):** all work on `stage-2`, cut from `develop` after Stage 1 was signed off ·
+one commit per task ID with a `Verified:` line · merged to `develop` only after CHECKPOINT 2 (S2-20).
 
 ---
 

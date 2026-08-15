@@ -237,29 +237,45 @@ Write it as prose. Checklists belong in the stage doc.
 
 ## 5. Branch, task, and commit discipline
 
-### 5.1 Branching — one branch per stage
+### 5.1 Branching — three tiers, and an agent never touches `main`
 
 ```
-main ──●──────────────────────────●──────────────────────●────────►
-       │  (reviewed baseline)     ↑ merge after sign-off ↑
-       └── stage-1 ──●──●──●──●───┘                      │
-                      (S1-01 … S1-15)                    │
-                        main ── stage-2 ──●──●──●──●─────┘
-                                           (S2-01 … S2-18)
+  main ─────●···························································●──────►
+            │   NO AGENT COMMITS, EVER.                    project close ↑
+            │   Human-only. Releases and final sign-off.                 │
+            │                                                           │
+develop ────●────●──────────────●───────────────────●────────────────────┘
+            │  integration      ↑                   ↑
+            │  (process docs,   │                   │
+            │   completed       │                   │
+            │   stages)         │                   │
+            └── stage-1 ──●──●──┘                   │
+                          (S1-01 … S1-17)           │
+                   develop ── stage-2 ──●──●──●──●──┘
+                                        (S2-01 … S2-20)
 ```
 
-- **`main` holds only signed-off work.** It is the baseline a human reviews against. An agent never
-  commits implementation code directly to `main`.
-- **Cut `stage-{N}` from `main` at stage kickoff**, before the first line of code:
-  `git checkout main && git pull && git checkout -b stage-{N}`.
+**The rule, stated once and without exception: an agent never commits to `main`, never merges into
+`main`, and never checks out `main` to make a change.** `main` moves only when a human moves it.
+There is no category of change — not a typo fix, not a doc tweak, not "just the .gitignore" — that
+justifies an agent writing to `main`.
+
+- **`develop` is the integration branch.** Everything an agent produces ends up here: completed
+  stages, process/governance doc changes, tooling fixes. If you are about to commit and you are not
+  on a `stage-{N}` branch, `develop` is where it goes.
+- **Cut `stage-{N}` from `develop` at stage kickoff**, before the first line of code:
+  `git checkout develop && git checkout -b stage-{N}`.
 - **All stage work lands on that branch**, one commit per task ID.
-- **Merge to `main` only after the stage's `HUMAN GATE` passes.** The merge is part of the stage
-  completion ritual (`§10`), not something you do because the tests went green.
-- **Docs that govern all stages** — `AGENTS.md`, `CLAUDE.md`, `_TEMPLATE_*`, `docs/version/` — may go
-  straight to `main`, because they are not stage output. Merge `main` into the live stage branch
-  afterwards so it inherits them.
-- If you find yourself on `main` with uncommitted source changes, **stop and branch** before doing
-  anything else.
+- **Merge `stage-{N}` → `develop` only after the stage's `HUMAN GATE` passes.** The merge is part of
+  the stage completion ritual (`§10`), not something you do because the tests went green.
+- **Governance docs** — `AGENTS.md`, `CLAUDE.md`, `_TEMPLATE_*`, `docs/version/`, `.gitignore` — go
+  to `develop` directly, since they are not stage output. Then merge `develop` into the live stage
+  branch so it inherits them.
+- If you find yourself on `main` for any reason, **stop and switch** before doing anything else.
+
+> **Why the extra tier.** `main` being human-only means there is always one branch whose history no
+> agent has written to. That is the branch you can trust without reading a diff. Collapsing `develop`
+> into `main` would take that away for the sake of one fewer branch.
 
 ### 5.2 Tasks and commits
 
@@ -361,7 +377,9 @@ A question costs one message. A wrong guess propagates through three stages.
 ```
 START
   □ read docs/STATE.md
-  □ `git branch --show-current` — are you on stage-{N}? if on main, STOP and branch (§5.1)
+  □ `git branch --show-current` — must be stage-{N} for stage work, or
+    develop for governance docs. If it prints `main`, STOP: agents never
+    touch main (§5.1)
   □ read current stage doc (Entry Point + spec + log tail)
   □ run the green gate — confirm you inherited a working tree
   □ state which task ID you are starting
@@ -384,7 +402,8 @@ END
       □ write §Handoff in the stage doc
       □ write docs/version/stage{N}.md from the retrospective template (§4.6)
       □ STOP and request human sign-off
-      □ merge stage-{N} → main ONLY after sign-off (§5.1)
+      □ merge stage-{N} → develop ONLY after sign-off (§5.1)
+      □ never merge to main — that is the human's move, not yours
 ```
 
 **Stage transitions are human-gated.** An agent never declares a stage complete and rolls into the
