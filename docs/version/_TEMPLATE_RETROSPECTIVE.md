@@ -14,8 +14,8 @@
 | | |
 |---|---|
 | **Branch** | `stage-{N}` |
-| **Cut from `main`** | YYYY-MM-DD |
-| **Merged to `main`** | YYYY-MM-DD |
+| **Cut from `develop`** | YYYY-MM-DD |
+| **Merged to `develop`** | YYYY-MM-DD |
 | **Signed off by** | _human name — an agent never fills this in_ |
 | **Commits** | _n_ |
 | **Tests at close** | _n passing_ |

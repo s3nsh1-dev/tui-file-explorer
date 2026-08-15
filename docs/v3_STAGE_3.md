@@ -4,7 +4,7 @@
 > **Status:** ⚠ **PROVISIONAL — not frozen.** Written during planning on 2026-08-15, two stages
 > ahead of itself, at the maintainer's request for a full roadmap.
 >
-> **Branch:** `stage-3` — cut from `main` at kickoff, merged back only after sign-off
+> **Branch:** `stage-3` — cut from `develop` at kickoff, merged back only after sign-off
 > (`AGENTS.md §5.1`).
 > **Retrospective:** `docs/version/stage3.md`, written at S3-20.
 >
@@ -189,7 +189,7 @@ crashing would not.
 | S3-18 | Packaging — `files` allowlist, `pnpm pack` + tarball inspection, release workflow (not triggered), **ADR-0004 npm name decision** | S3-17 | **L4 HUMAN GATE** |
 | S3-19 | `README`, ADR sweep, `docs/STATE.md`, final delivery report | S3-18 | docs |
 | S3-20 | `docs/version/stage3.md` — narrative retrospective (`AGENTS.md §4.6`). Closes the three-part history: read `stage1.md` → `stage2.md` → `stage3.md` in order and the whole project's reasoning is there | S3-19 | docs |
-| S3-21 | Merge `stage-3` → `main`. **Only after the maintainer signs off.** | S3-20 | — |
+| S3-21 | Merge `stage-3` → `develop`. **Only after the maintainer signs off.** | S3-20 | — |
 
 ---
 
@@ -238,7 +238,7 @@ and 24, not only locally.
 - [ ] `docs/version/stage3.md` written, completing the three-part history. Test the claim the same
       way `§9.2` should be tested: hand `stage1.md` → `stage2.md` → `stage3.md` to someone with no
       other context and see whether they can explain why the app is shaped the way it is.
-- [ ] **Branch (`AGENTS.md §5.1`):** all work on `stage-3`; merged to `main` only at S3-21, after
+- [ ] **Branch (`AGENTS.md §5.1`):** all work on `stage-3`; merged to `develop` only at S3-21, after
       sign-off.
 - [ ] `docs/v3_STAGE_3.md §0 Entry Point` is good enough that a stranger can read v3 alone and
       understand the architecture — `00_PROJECT_INSPIRATION.md §9.2` is a testable claim, so test it:
