@@ -35,7 +35,10 @@ export type State = {
   readonly cursorName: string | null;
   readonly filter: string;
   /** What to restore if filter mode is cancelled with Escape. */
-  readonly filterBackup: { readonly filter: string; readonly cursorName: string | null } | null;
+  readonly filterBackup: {
+    readonly filter: string;
+    readonly cursorName: string | null;
+  } | null;
   readonly sortKey: SortKey;
   readonly sortReverse: boolean;
   readonly showHidden: boolean;
@@ -152,28 +155,36 @@ export const reducer = (state: State, action: Action): State => {
       // a partial defence only — real request sequencing is S3-04.
       if (action.dir !== state.dir) return state;
       return recompute(
-        { ...state, status: 'ready', error: undefined, entries: action.entries },
+        {
+          ...state,
+          status: 'ready',
+          error: undefined,
+          entries: action.entries,
+        },
         state.cursorName,
       );
 
     case 'FAILED':
       if (action.dir !== state.dir) return state;
-      return recompute(
-        { ...state, status: 'error', error: action.message, entries: [] },
-        null,
-      );
+      return recompute({ ...state, status: 'error', error: action.message, entries: [] }, null);
 
     case 'MOVE': {
       const index = cursorIndex(state);
       if (index < 0) return state;
       const target = Math.min(Math.max(index + action.delta, 0), state.visible.length - 1);
-      return { ...state, cursorName: state.visible[target]?.name ?? state.cursorName };
+      return {
+        ...state,
+        cursorName: state.visible[target]?.name ?? state.cursorName,
+      };
     }
 
     case 'MOVE_TO': {
       if (state.visible.length === 0) return state;
       const target = action.position === 'start' ? 0 : state.visible.length - 1;
-      return { ...state, cursorName: state.visible[target]?.name ?? state.cursorName };
+      return {
+        ...state,
+        cursorName: state.visible[target]?.name ?? state.cursorName,
+      };
     }
 
     case 'TOGGLE_HIDDEN':
@@ -208,7 +219,12 @@ export const reducer = (state: State, action: Action): State => {
     case 'FILTER_CANCEL': {
       const backup = state.filterBackup;
       return recompute(
-        { ...state, mode: 'normal', filter: backup?.filter ?? '', filterBackup: null },
+        {
+          ...state,
+          mode: 'normal',
+          filter: backup?.filter ?? '',
+          filterBackup: null,
+        },
         backup?.cursorName ?? state.cursorName,
       );
     }

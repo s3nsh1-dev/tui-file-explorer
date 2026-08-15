@@ -48,5 +48,8 @@ export const nextOffset = (
 };
 
 /** The rows actually rendered. Slice before mapping — that is the whole point. */
-export const windowSlice = <T>(items: readonly T[], offset: number, height: number): readonly T[] =>
-  height <= 0 ? [] : items.slice(offset, offset + height);
+export const windowSlice = <T>(
+  items: readonly T[],
+  offset: number,
+  height: number,
+): readonly T[] => (height <= 0 ? [] : items.slice(offset, offset + height));

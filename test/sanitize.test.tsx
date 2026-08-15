@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { App, sanitizeName } from '../src/app.js';
+import { App } from '../src/app.js';
+import { sanitizeName } from '../src/core/sanitize.js';
 import { fixture } from './helpers/fixture.js';
 import { cleanup, render, settle } from './helpers/render.js';
 

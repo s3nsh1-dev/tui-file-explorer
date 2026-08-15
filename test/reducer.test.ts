@@ -42,13 +42,21 @@ describe('loading', () => {
 
   it('ignores a result for a directory we already navigated away from', () => {
     const state = reducer(loaded(), { type: 'NAVIGATE', dir: '/other' });
-    const stale = reducer(state, { type: 'LOADED', dir: '/tmp', entries: SAMPLE });
+    const stale = reducer(state, {
+      type: 'LOADED',
+      dir: '/tmp',
+      entries: SAMPLE,
+    });
     expect(stale.status).toBe('loading');
     expect(stale.visible).toHaveLength(0);
   });
 
   it('records a failure without losing the directory', () => {
-    const state = reducer(loaded(), { type: 'FAILED', dir: '/tmp', message: 'permission denied' });
+    const state = reducer(loaded(), {
+      type: 'FAILED',
+      dir: '/tmp',
+      message: 'permission denied',
+    });
     expect(state.status).toBe('error');
     expect(state.error).toBe('permission denied');
     expect(state.visible).toHaveLength(0);
@@ -79,7 +87,11 @@ describe('cursor', () => {
   });
 
   it('reports index -1 and no selection for an empty listing', () => {
-    const state = reducer(initialState('/tmp'), { type: 'LOADED', dir: '/tmp', entries: [] });
+    const state = reducer(initialState('/tmp'), {
+      type: 'LOADED',
+      dir: '/tmp',
+      entries: [],
+    });
     expect(cursorIndex(state)).toBe(-1);
     expect(selectedEntry(state)).toBeUndefined();
   });
@@ -122,7 +134,10 @@ describe('name-anchored cursor', () => {
 
   it('never reports an index past the end of the visible list', () => {
     let state = reducer(loaded(), { type: 'MOVE_TO', position: 'end' });
-    state = reducer(state, { type: 'FILTER_INPUT', value: 'zzz-nothing-matches' });
+    state = reducer(state, {
+      type: 'FILTER_INPUT',
+      value: 'zzz-nothing-matches',
+    });
     expect(state.visible).toHaveLength(0);
     expect(cursorIndex(state)).toBe(-1);
   });
@@ -144,7 +159,7 @@ describe('sorting', () => {
 
   it('keeps directories first under every sort key', () => {
     let state = loaded();
-    for (const _ of [0, 1, 2, 3]) {
+    for (let round = 0; round < 4; round += 1) {
       state = reducer(state, { type: 'CYCLE_SORT' });
       const names = state.visible.map((e) => e.name);
       expect(names.slice(0, 2).sort()).toEqual(['docs', 'src']);

@@ -9,7 +9,11 @@ export type Action =
   /** A navigation began. Clears entries so the UI can show a loading state. */
   | { readonly type: 'NAVIGATE'; readonly dir: string }
   /** readdir resolved. `dir` is echoed so a stale result can be ignored. */
-  | { readonly type: 'LOADED'; readonly dir: string; readonly entries: readonly Entry[] }
+  | {
+      readonly type: 'LOADED';
+      readonly dir: string;
+      readonly entries: readonly Entry[];
+    }
   /** readdir rejected, with a message already sanitized by the caller. */
   | { readonly type: 'FAILED'; readonly dir: string; readonly message: string }
   | { readonly type: 'MOVE'; readonly delta: number }

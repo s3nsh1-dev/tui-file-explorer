@@ -26,7 +26,9 @@ describe('raw mode degradation', () => {
    * The app must gate on isRawModeSupported rather than let that throw.
    */
   it('still renders the listing when raw mode is unavailable', async () => {
-    const { lastFrame } = render(<App cwd={fixture('basic')} />, { stdinIsTTY: false });
+    const { lastFrame } = render(<App cwd={fixture('basic')} />, {
+      stdinIsTTY: false,
+    });
     await settle();
 
     const frame = lastFrame() ?? '';
@@ -35,14 +37,18 @@ describe('raw mode degradation', () => {
   });
 
   it('tells the user input is unavailable instead of failing silently', async () => {
-    const { lastFrame } = render(<App cwd={fixture('basic')} />, { stdinIsTTY: false });
+    const { lastFrame } = render(<App cwd={fixture('basic')} />, {
+      stdinIsTTY: false,
+    });
     await settle();
 
     expect(lastFrame() ?? '').toMatch(/input unavailable/i);
   });
 
   it('does not crash when keys are sent with raw mode unavailable', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, { stdinIsTTY: false });
+    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, {
+      stdinIsTTY: false,
+    });
     await settle();
 
     const before = lastFrame();
