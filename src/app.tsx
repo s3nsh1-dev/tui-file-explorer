@@ -19,6 +19,48 @@ export type AppProps = {
   readonly cwd: string;
 };
 
+/**
+ * Codepoint ranges that must never reach the terminal verbatim (ADR-0005).
+ * A filename is attacker-controlled input and the terminal executes what it
+ * is printed. Written as numeric ranges rather than a regex literal so no
+ * invisible control byte ends up in this source file.
+ */
+const DANGEROUS_RANGES: readonly (readonly [number, number])[] = [
+  [0x00, 0x1f], // C0 controls — includes CR (row overwrite) and ESC (CSI/OSC)
+  [0x7f, 0x9f], // DEL and the C1 controls, which are 8-bit CSI on some terminals
+  [0x200b, 0x200f], // zero-width space/joiners and LRM/RLM
+  [0x202a, 0x202e], // bidi embedding and override — the RLO extension spoof
+  [0x2066, 0x2069], // bidi isolates
+  [0xfeff, 0xfeff], // BOM / zero-width no-break space
+];
+
+const isDangerous = (code: number): boolean =>
+  DANGEROUS_RANGES.some(([low, high]) => code >= low && code <= high);
+
+/**
+ * Render an untrusted string safely. Escapes to `<U+XXXX>` rather than
+ * stripping, so the user can see that something was there — a silently
+ * removed character is its own kind of spoof.
+ *
+ * Deliberately NOT an ASCII filter: accented text, CJK and emoji are ordinary
+ * filenames and pass through untouched. Iterating with for..of walks whole
+ * codepoints, so surrogate pairs are never split.
+ *
+ * Stage 2 promotes this to src/core/sanitize.ts with width-aware truncation
+ * (S2-06). The behaviour lives here now because the very first frame that
+ * renders a filename is already rendering untrusted input.
+ */
+export const sanitizeName = (name: string): string => {
+  let result = '';
+  for (const character of name) {
+    const code = character.codePointAt(0) ?? 0;
+    result += isDangerous(code)
+      ? `<U+${code.toString(16).toUpperCase().padStart(4, '0')}>`
+      : character;
+  }
+  return result;
+};
+
 /** Directories first, then case-insensitive by name. Fixed order in Stage 1. */
 const compareEntries = (a: Entry, b: Entry): number => {
   if (a.isDirectory !== b.isDirectory) {
@@ -101,12 +143,12 @@ export const App = ({ cwd }: AppProps): React.JSX.Element => {
       {/* truncate-start keeps the tail of a long path — the part that says
           where you actually are. Wrapping would reflow the whole listing. */}
       <Text bold wrap="truncate-start">
-        glim {displayPath(dir)}
+        glim {sanitizeName(displayPath(dir))}
       </Text>
       {entries.map((entry, index) => (
         <Text key={entry.name}>
           {index === cursor ? '❯ ' : '  '}
-          {entry.name}
+          {sanitizeName(entry.name)}
           {entry.isDirectory ? '/' : ''}
         </Text>
       ))}
