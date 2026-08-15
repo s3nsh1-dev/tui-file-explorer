@@ -56,7 +56,14 @@ class FakeStderr extends EventEmitter {
 class FakeStdin extends EventEmitter {
   data: string | null = null;
 
-  constructor(readonly isTTY: boolean) {
+  /**
+   * `boolean | undefined`, not `boolean`, because that is what Node does:
+   * a non-TTY stream has `isTTY === undefined`, never `false`. Ink assigns it
+   * straight through to `isRawModeSupported`, so a fake that reports a tidy
+   * `false` is better-behaved than reality and hides a real bug — it did
+   * exactly that at S1-13.
+   */
+  constructor(readonly isTTY: boolean | undefined) {
     super();
   }
 
@@ -113,6 +120,11 @@ export type RenderResult = {
   readonly rerender: (tree: ReactElement) => void;
   readonly unmount: () => void;
   readonly cleanup: () => void;
+  /**
+   * Resolves once the app calls exit() — how we prove `q` actually quits.
+   * Ink 7 resolves with whatever was passed to exit(value), hence `unknown`.
+   */
+  readonly waitUntilExit: () => Promise<unknown>;
 };
 
 const instances: { unmount: () => void; cleanup: () => void }[] = [];
@@ -120,7 +132,7 @@ const instances: { unmount: () => void; cleanup: () => void }[] = [];
 export const render = (tree: ReactElement, options: RenderOptions = {}): RenderResult => {
   const stdout = new FakeStdout(options.columns ?? DEFAULT_COLUMNS, options.rows ?? DEFAULT_ROWS);
   const stderr = new FakeStderr();
-  const stdin = new FakeStdin(options.stdinIsTTY ?? true);
+  const stdin = new FakeStdin(options.stdinIsTTY === false ? undefined : true);
 
   const instance = inkRender(tree, {
     // Ink types these as real TTY streams. The fakes implement the surface Ink
@@ -146,6 +158,7 @@ export const render = (tree: ReactElement, options: RenderOptions = {}): RenderR
     rerender: instance.rerender,
     unmount: instance.unmount,
     cleanup: instance.cleanup,
+    waitUntilExit: instance.waitUntilExit,
   };
 };
 

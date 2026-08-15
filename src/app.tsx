@@ -1,7 +1,7 @@
-import { readdir } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useApp, useInput, useStdin } from 'ink';
 import { useEffect, useState } from 'react';
 
 /**
@@ -69,6 +69,67 @@ const compareEntries = (a: Entry, b: Entry): number => {
   return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 };
 
+export type TargetResult =
+  | { readonly ok: true; readonly path: string }
+  | { readonly ok: false; readonly message: string };
+
+/**
+ * Narrow an unknown thrown value to its errno code without asserting.
+ * AGENTS.md §7 bans `any`; a caught value is genuinely `unknown`.
+ */
+const errnoOf = (error: unknown): string | undefined => {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const { code } = error;
+    return typeof code === 'string' ? code : undefined;
+  }
+  return undefined;
+};
+
+/**
+ * Turn a filesystem errno into one sanitized line a user can act on.
+ * Shared by startup validation and the in-app load, because the two must not
+ * describe the same failure two different ways.
+ */
+const describeFsError = (error: unknown, target: string): string => {
+  const shown = sanitizeName(target);
+  switch (errnoOf(error)) {
+    case 'ENOENT':
+      return `no such directory: ${shown}`;
+    case 'ENOTDIR':
+      return `not a directory: ${shown}`;
+    case 'EACCES':
+    case 'EPERM':
+      return `permission denied: ${shown}`;
+    default:
+      return `cannot read: ${shown}`;
+  }
+};
+
+/**
+ * Validate the CLI path argument before Ink mounts.
+ *
+ * Failing here means the user gets one clean line on stderr and a non-zero
+ * exit — not a React error boundary, not a stack trace, and not a half-drawn
+ * TUI over a terminal already switched into raw mode.
+ *
+ * The reported path is sanitized: an error message is a render path too, and
+ * ADR-0005 makes no exception for it.
+ */
+export const resolveTarget = async (input: string): Promise<TargetResult> => {
+  const resolved = path.resolve(input);
+  const shown = sanitizeName(resolved);
+
+  try {
+    const stats = await stat(resolved);
+    if (!stats.isDirectory()) {
+      return { ok: false, message: `not a directory: ${shown}` };
+    }
+    return { ok: true, path: resolved };
+  } catch (error) {
+    return { ok: false, message: describeFsError(error, resolved) };
+  }
+};
+
 /** `/home/you/projects` → `~/projects`. Cosmetic only; never used for I/O. */
 const displayPath = (target: string): string => {
   const home = os.homedir();
@@ -78,23 +139,50 @@ const displayPath = (target: string): string => {
 };
 
 export const App = ({ cwd }: AppProps): React.JSX.Element => {
+  const { exit } = useApp();
+  const stdin = useStdin();
+
+  // Ink types isRawModeSupported as `boolean`, but it is assigned straight
+  // from `stdin.isTTY` (App.js:121), and Node sets that to UNDEFINED — never
+  // `false` — on a non-TTY stream. Passing it through unchanged gives
+  // useInput `{ isActive: undefined }`, which falls back to its default of
+  // `true`, calls setRawMode, and throws. Coerce, do not trust the type.
+  //
+  // Routed through `unknown` deliberately. Boolean() would be flagged as a
+  // redundant conversion — correctly, according to Ink's declared type — and
+  // that lint error is the type system confidently repeating Ink's mistake.
+  // Treating the value as unknown and narrowing states the distrust in code
+  // instead of suppressing the rule.
+  const rawModeFlag: unknown = stdin.isRawModeSupported;
+  const canReadInput = rawModeFlag === true;
   const [dir, setDir] = useState(cwd);
   const [entries, setEntries] = useState<readonly Entry[]>([]);
   const [cursor, setCursor] = useState(0);
+  const [error, setError] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async (): Promise<void> => {
-      const dirents = await readdir(dir, { withFileTypes: true });
-      if (cancelled) return;
+      try {
+        const dirents = await readdir(dir, { withFileTypes: true });
+        if (cancelled) return;
 
-      const loaded = dirents.map((dirent) => ({
-        name: dirent.name,
-        isDirectory: dirent.isDirectory(),
-      }));
+        const loaded = dirents.map((dirent) => ({
+          name: dirent.name,
+          isDirectory: dirent.isDirectory(),
+        }));
 
-      setEntries([...loaded].sort(compareEntries));
+        setEntries([...loaded].sort(compareEntries));
+        setError(undefined);
+      } catch (caught) {
+        // AGENTS.md §7: handle or rethrow with context, never swallow. An
+        // uncaught rejection here terminates the process and leaves the
+        // terminal in raw mode — the worst possible failure for a TUI.
+        if (cancelled) return;
+        setEntries([]);
+        setError(describeFsError(caught, dir));
+      }
     };
 
     void load();
@@ -106,37 +194,50 @@ export const App = ({ cwd }: AppProps): React.JSX.Element => {
 
   // One input owner for the whole app — AGENTS.md §8. Stacking a second
   // useInput anywhere in the tree makes every keypress fire twice.
-  useInput((input, key) => {
-    if (key.downArrow || input === 'j') {
-      setCursor((current) => Math.min(current + 1, Math.max(entries.length - 1, 0)));
-      return;
-    }
-
-    if (key.upArrow || input === 'k') {
-      setCursor((current) => Math.max(current - 1, 0));
-      return;
-    }
-
-    if (key.return || key.rightArrow || input === 'l') {
-      const entry = entries[cursor];
-      // noUncheckedIndexedAccess makes the undefined case explicit: an empty
-      // directory has no entry under the cursor at all.
-      if (entry?.isDirectory === true) {
-        setDir(path.join(dir, entry.name));
-        setCursor(0);
+  //
+  // The { isActive } gate is load-bearing, not defensive: Ink 7's useInput
+  // calls setRawMode(true) in an effect (use-input.js:34), and setRawMode
+  // THROWS when raw mode is unsupported (App.js handleSetRawMode). Without
+  // this gate, piping stdin renders an empty frame instead of the listing.
+  useInput(
+    (input, key) => {
+      if (input === 'q') {
+        exit();
+        return;
       }
-      return;
-    }
 
-    if (key.leftArrow || input === 'h') {
-      const parent = path.dirname(dir);
-      // At the filesystem root, dirname('/') === '/'. Stop rather than loop.
-      if (parent !== dir) {
-        setDir(parent);
-        setCursor(0);
+      if (key.downArrow || input === 'j') {
+        setCursor((current) => Math.min(current + 1, Math.max(entries.length - 1, 0)));
+        return;
       }
-    }
-  });
+
+      if (key.upArrow || input === 'k') {
+        setCursor((current) => Math.max(current - 1, 0));
+        return;
+      }
+
+      if (key.return || key.rightArrow || input === 'l') {
+        const entry = entries[cursor];
+        // noUncheckedIndexedAccess makes the undefined case explicit: an empty
+        // directory has no entry under the cursor at all.
+        if (entry?.isDirectory === true) {
+          setDir(path.join(dir, entry.name));
+          setCursor(0);
+        }
+        return;
+      }
+
+      if (key.leftArrow || input === 'h') {
+        const parent = path.dirname(dir);
+        // At the filesystem root, dirname('/') === '/'. Stop rather than loop.
+        if (parent !== dir) {
+          setDir(parent);
+          setCursor(0);
+        }
+      }
+    },
+    { isActive: canReadInput },
+  );
 
   return (
     <Box flexDirection="column">
@@ -145,6 +246,12 @@ export const App = ({ cwd }: AppProps): React.JSX.Element => {
       <Text bold wrap="truncate-start">
         glim {sanitizeName(displayPath(dir))}
       </Text>
+      {!canReadInput && (
+        <Text dimColor>input unavailable — stdin is not a TTY (read-only listing)</Text>
+      )}
+      {/* Colour is Stage 2 (v1 §3). Plain text still says what went wrong,
+          and the keymap stays alive so the user can navigate back out. */}
+      {error !== undefined && <Text>! {error}</Text>}
       {entries.map((entry, index) => (
         <Text key={entry.name}>
           {index === cursor ? '❯ ' : '  '}
