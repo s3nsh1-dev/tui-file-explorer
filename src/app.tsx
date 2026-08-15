@@ -1,5 +1,5 @@
 import { readdir } from 'node:fs/promises';
-import { Box, Text } from 'ink';
+import { Box, Text, useInput } from 'ink';
 import { useEffect, useState } from 'react';
 
 /**
@@ -27,6 +27,7 @@ const compareEntries = (a: Entry, b: Entry): number => {
 
 export const App = ({ cwd }: AppProps): React.JSX.Element => {
   const [entries, setEntries] = useState<readonly Entry[]>([]);
+  const [cursor, setCursor] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,10 +51,23 @@ export const App = ({ cwd }: AppProps): React.JSX.Element => {
     };
   }, [cwd]);
 
+  // One input owner for the whole app — AGENTS.md §8. Stacking a second
+  // useInput anywhere in the tree makes every keypress fire twice.
+  useInput((input, key) => {
+    if (key.downArrow || input === 'j') {
+      setCursor((current) => Math.min(current + 1, Math.max(entries.length - 1, 0)));
+      return;
+    }
+    if (key.upArrow || input === 'k') {
+      setCursor((current) => Math.max(current - 1, 0));
+    }
+  });
+
   return (
     <Box flexDirection="column">
-      {entries.map((entry) => (
+      {entries.map((entry, index) => (
         <Text key={entry.name}>
+          {index === cursor ? '❯ ' : '  '}
           {entry.name}
           {entry.isDirectory ? '/' : ''}
         </Text>

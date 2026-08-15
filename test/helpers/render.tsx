@@ -168,12 +168,19 @@ export const settle = async (ms = 50): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-/** Terminal escape sequences, named so tests read as intent not as bytes. */
+/**
+ * Terminal escape sequences, named so tests read as intent, not as bytes.
+ *
+ * Built with String.fromCharCode rather than written literally: a raw 0x1b in
+ * source is invisible in a diff and silently mangled by editors and tooling.
+ */
+const ESC = String.fromCharCode(0x1b);
+
 export const KEY = {
-  up: '[A',
-  down: '[B',
-  right: '[C',
-  left: '[D',
-  enter: '\r',
-  escape: '',
+  up: `${ESC}[A`,
+  down: `${ESC}[B`,
+  right: `${ESC}[C`,
+  left: `${ESC}[D`,
+  enter: String.fromCharCode(0x0d),
+  escape: ESC,
 } as const;
