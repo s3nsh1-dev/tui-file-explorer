@@ -1,7 +1,9 @@
 # v1 — Stage 1: Walking Skeleton
 
 > **Agent mentality for this stage:** Bricklayer — see `00_PROJECT_INSPIRATION.md §7`.
-> **Status:** Spec — freezes on the first commit of this stage.
+> **Status:** In progress. Spec **frozen** as of `47280b4` (S1-01).
+> **Branch:** `stage-1`, cut from `main` at `d773d53`. `main` receives nothing until S1-17.
+> **Retrospective:** `docs/version/stage1.md`, written at S1-15.
 >
 > *(§0 Entry Point is deliberately absent. v1 starts from nothing; there is no prior stage to
 > summarise. See `_TEMPLATE_STAGE.md` §0.)*
@@ -192,7 +194,9 @@ Ordered. Do them in order unless a dependency says otherwise. One task ID per co
 | S1-12 | `src/cli.tsx` — `meow` with `--help`/`--version`; resolve + `lstat` the path arg; `ENOENT`/`ENOTDIR`/`EACCES` → sanitized stderr message + exit 2 | S1-10 | **L1** |
 | S1-13 | Lifecycle — `q` quits via `useApp().exit()`; `isRawModeSupported === false` degrades with a message instead of throwing; terminal restored on `exit`/`SIGINT`/`SIGTERM`/`uncaughtException`; `SIGINT` → exit 130 | S1-12 | **L1** |
 | S1-14 | `README.md` (install, run, keys, Node 22 requirement); log below the BUILD LINE; `docs/STATE.md`; `§10 Handoff` | S1-13 | docs |
-| S1-15 | **CHECKPOINT 1** — maintainer runs the binary in a real terminal | S1-14 | **L4 HUMAN GATE** |
+| S1-15 | `docs/version/stage1.md` — the narrative retrospective (`AGENTS.md §4.6`). Written **before** the gate so the reviewer reads the history while reviewing | S1-14 | docs |
+| S1-16 | **CHECKPOINT 1** — maintainer runs the binary in a real terminal | S1-15 | **L4 HUMAN GATE** |
+| S1-17 | Merge `stage-1` → `main`. **Only after S1-16 passes.** Record merge date + signer in the retrospective | S1-16 | — |
 
 Evidence levels: L1 frame assertion · L2 golden frame · L3 PTY e2e · L4 human gate (`AGENTS.md §2`).
 
@@ -238,7 +242,7 @@ Evidence levels: L1 frame assertion · L2 golden frame · L3 PTY e2e · L4 human
 
 **Human gates:**
 
-- [ ] **CHECKPOINT 1 (S1-15).** The maintainer runs `pnpm build && node dist/cli.js ~` in a real
+- [ ] **CHECKPOINT 1 (S1-16).** The maintainer runs `pnpm build && node dist/cli.js ~` in a real
       terminal on Linux and confirms, with their own eyes:
       1. the listing appears and the `❯` cursor is visible and legible;
       2. arrow keys move it without flicker;
@@ -253,8 +257,15 @@ Evidence levels: L1 frame assertion · L2 golden frame · L3 PTY e2e · L4 human
 
 - [ ] Implementation log below the BUILD LINE is complete and dated
 - [ ] ADRs written for durable decisions
-- [ ] `docs/STATE.md` updated
+- [ ] `docs/STATE.md` updated (including the `Branch` field)
 - [ ] `## Handoff` written
+- [ ] `docs/version/stage1.md` written from the retrospective template (`AGENTS.md §4.6`)
+
+**Branch (`AGENTS.md §5.1`):**
+
+- [ ] All Stage 1 work on `stage-1`; `main` untouched since `d773d53`
+- [ ] One commit per task ID, each carrying a `Verified:` line
+- [ ] `stage-1` merged to `main` **only** after CHECKPOINT 1 passes (S1-17)
 
 ---
 
@@ -281,6 +292,50 @@ are the part that has value later._
 - **Surprise:** the repo was not a git repository and `docs/adr/` did not exist, despite
   `STATE.md` describing it as present-and-empty. Both fold into `S1-01`.
 
+### 2026-08-15 — S1-01 → S1-03, and four surprises
+
+- **S1-01** — `git init` on `main`; `.gitignore` (blocking `package-lock.json`), `.editorconfig`,
+  `.npmrc` with `engine-strict=true`.
+  Verified: commit `47280b4`; `git status --short` clean for those paths.
+- **S1-02** — dependency set pinned exactly, all versions resolved live via `npm view`.
+  Verified: commit `109ecf9`; `pnpm install` exits 0 with no ignored-build error.
+- **S1-03** — strict `tsconfig.json`.
+  Verified: commit `d96ee73`. Typecheck deliberately **not** run — with no `src/` or `test/` yet it
+  would pass vacuously, and a vacuous green is worse than no green.
+
+- **Process correction (maintainer, mid-session):** I scaffolded S1-01…S1-03 directly on `main` with
+  no commits at all. The maintainer caught it. Restructured: `main` now holds only the reviewed
+  planning baseline (`d773d53`), and all Stage 1 work moved to the `stage-1` branch with one commit
+  per task ID. `AGENTS.md §5.1` now encodes the rule so it cannot recur silently.
+
+- **Surprise — pnpm blocked a build script at S1-02, two stages early.** `esbuild` (transitive under
+  tsup and vitest) had its postinstall refused, which would have left both the bundler and the test
+  runner broken. This is precisely the failure ADR-0001 predicted for Stage 3's `node-pty`; it simply
+  arrived first. Fixing it surfaced a second fact: **pnpm 11 renamed the setting.** pnpm 10's
+  `onlyBuiltDependencies` (a list, in `package.json`) is now `allowBuilds` (a map, in
+  `pnpm-workspace.yaml`), and pnpm 11 **silently ignores the `pnpm` field in `package.json`** with
+  only a warning. ADR-0001 and `v3 §S3-14` both name the old setting; `pnpm-workspace.yaml` carries a
+  comment correcting them at the point of use.
+
+- **Surprise — Ink 7 has built-in solutions for two things the docs told me to hand-roll.** Reading
+  `node_modules/ink/build/index.d.ts` (per `CLAUDE.md §3`) turned up:
+  - `useWindowSize()` — returns `{columns, rows}` and re-renders on resize. This **replaces** the
+    planned `ui/hooks/useTerminalSize.ts` at `S2-02`.
+  - `render(node, { alternateScreen: true })` — Ink 7 manages the alternate screen buffer natively,
+    including teardown. This **replaces** `S2-15`'s plan to write raw `\x1b[?1049h` / `[?1049l`, and
+    makes the planned ADR-0007 much smaller. `AGENTS.md §8`'s advice here is Ink 6-era.
+  - Also present and unknown to me beforehand: `renderToString`, `usePaste`, `useCursor`,
+    `incrementalRendering`, `maxFps`, kitty keyboard protocol support, and an `interactive` option
+    that already auto-detects non-TTY — relevant to Stage 3's A11/A12 adversaries.
+
+- **Surprise — `ink-testing-library@4` cannot express two of this stage's own requirements.** Reading
+  its 90-line source: `columns` is a hardcoded getter returning `100`, there is no `rows` property at
+  all, and its fake stdin sets `isTTY = true` unconditionally. Since Ink derives
+  `isRawModeSupported` directly from `stdin.isTTY` (`ink/build/components/App.js:121`), the S1-13 DoD
+  item about raw-mode degradation cannot be tested through it. Replaced by a local harness; see
+  `§9 Deviations`. Its `columns = 100` *is* deterministic across machines, so the dependency was not
+  wrong — merely insufficient.
+
 ---
 
 ## 9. Deviations from spec
@@ -290,6 +345,8 @@ are the part that has value later._
 | — | `00_INSPIRATION §4`: Node 20+, Ink 6 | Ink 7.1.1, `engines: node>=22` | Ink shipped a major version | ADR-0003 — inspiration doc is IMMUTABLE and stays stale by design |
 | — | `00_INSPIRATION §1`: `glim` is free on npm | Taken since 2022 | Registry changed | ADR-0004 |
 | — | `AGENTS.md §6`: `npm run …` | Maintainer uses pnpm | Toolchain preference | ADR-0001 — command strings updated in `AGENTS.md §6`, `CLAUDE.md §1`+`§3`, and `_TEMPLATE_STAGE.md §7` |
+| S1-15/16/17 | Task list ended at S1-15 (CHECKPOINT 1) | Three tasks added **after the spec froze** at `47280b4`: S1-15 retrospective, S1-16 checkpoint (renumbered), S1-17 merge | **Maintainer instruction, mid-stage** (2026-08-15) — asked for branch-per-stage and a narrative `docs/version/stage{N}.md` history. `AGENTS.md §9` makes changing a frozen spec a stop-and-ask; the maintainer pre-empted the ask by instructing it directly | Accepted. Spec amended above the BUILD LINE **by authorisation, not by drift** — recorded here so the freeze remains meaningful. `AGENTS.md §4.6`+`§5.1` are the new contract |
+| S1-06 | `ink-testing-library` is the component test tool (`00_INSPIRATION §4`) | v4 hardcodes `columns = 100`, exposes no `rows`, and its fake stdin is permanently `isTTY = true` | Its fixed stdin makes the S1-13 DoD item — "rendering with `isRawModeSupported === false` does not throw" — literally unwritable, and Stage 2 needs 80×24 + 120×40 golden frames | Replaced with a ~50-line typed harness in `test/helpers/render.tsx` that keeps the same call shape. Dependency removed. Detail in the log below |
 | — | `_TEMPLATE_STAGE.md` is IMMUTABLE (`AGENTS.md §4.1`) | Its DoD block still said `npm run …` | It is a **tool**, not a record — a stale gate propagates into every future stage doc copied from it. Changing a command string does not drift the stage *format*, which is what its immutability protects | Edited. `00_PROJECT_INSPIRATION.md` was **not** touched: that one is a record of what we believed, and stays stale by design |
 
 ---

@@ -7,13 +7,15 @@
 
 ---
 
-- **Stage:** 1 — spec written, **not yet started**
-- **Doc:** `docs/v1_STAGE_1.md` (spec complete, freezes on the first commit of Stage 1)
-- **Last verified green:** never — no `package.json` exists yet, so the gate cannot run
-- **Last task completed:** planning only. Five ADRs written; `v1`/`v2`/`v3` stage docs written
-- **Next task:** **S1-01** — `git init`, `.gitignore`, `.editorconfig`, `.npmrc`, first commit
-- **Blocked on:** human approval to begin Stage 1. No code has been written by design
-  (`CLAUDE.md §6` — spec first, stop, then work)
+- **Stage:** 1 — in progress
+- **Branch:** `stage-1` (cut from `main` at `d773d53`). `main` holds the reviewed planning baseline
+  and receives no implementation code until Stage 1 is signed off — `AGENTS.md §5.1`
+- **Doc:** `docs/v1_STAGE_1.md` — spec **frozen** as of commit `47280b4` (S1-01)
+- **Last verified green:** never — the gate has not been run end to end yet (S1-06 delivers it)
+- **Last task completed:** S1-03 (strict `tsconfig.json`)
+- **Next task:** **S1-04** — ESLint flat config incl. the ADR-0005 security rules
+  (`eslint.config.js` is written but **unverified**; `pnpm lint` has never run)
+- **Blocked on:** nothing
 - **Open ADRs:** none proposed. ADR-0001 … ADR-0005 are **Accepted**
 - **Do not touch:** n/a
 
@@ -64,6 +66,7 @@ Not a git repository yet. No `package.json`. No `src/`. No tests. **No code has 
 
 ```markdown
 - **Stage:** 2 (in progress)
+- **Branch:** `stage-2` (cut from `main` at <sha>)
 - **Doc:** docs/v2_STAGE_2.md
 - **Last verified green:** 2026-08-14 14:20 — typecheck ✓ lint ✓ test ✓ (34 passed) build ✓
 - **Last task completed:** S2-07 viewport windowing
@@ -75,6 +78,8 @@ Not a git repository yet. No `package.json`. No `src/`. No tests. **No code has 
 
 Rules:
 
+- `Branch` is **mandatory**. If it says `main` and the stage is in progress, that is a bug in the
+  workflow, not a state to record — see `AGENTS.md §5.1`.
 - `Last verified green` is a **timestamp plus the four gate results**. "green" alone is not an entry.
 - `Blocked on` says *what* is blocked and *where the detail lives*. Never just "waiting."
 - `Do not touch` exists so a parallel agent or a returning session doesn't stomp in-flight work.
@@ -83,10 +88,11 @@ Rules:
 
 ## Stage ledger
 
-| Stage | Doc | Started | Completed | Signed off by |
-|---|---|---|---|---|
-| 1 — Walking Skeleton | `docs/v1_STAGE_1.md` | — | — | — |
-| 2 — Real Application | `docs/v2_STAGE_2.md` | — | — | — |
-| 3 — Production | `docs/v3_STAGE_3.md` | — | — | — |
+| Stage | Doc | Branch | Started | Completed | Merged to `main` | Retrospective | Signed off by |
+|---|---|---|---|---|---|---|---|
+| 1 — Walking Skeleton | `docs/v1_STAGE_1.md` | `stage-1` | 2026-08-15 | — | — | `docs/version/stage1.md` | — |
+| 2 — Real Application | `docs/v2_STAGE_2.md` | `stage-2` | — | — | — | `docs/version/stage2.md` | — |
+| 3 — Production | `docs/v3_STAGE_3.md` | `stage-3` | — | — | — | `docs/version/stage3.md` | — |
 
-Stage transitions are human-gated. An agent fills `Started`/`Completed`; a human fills `Signed off by`.
+Stage transitions are human-gated. An agent fills `Started`/`Completed`/`Merged`; **a human fills
+`Signed off by`**, and the merge does not happen before they do.
