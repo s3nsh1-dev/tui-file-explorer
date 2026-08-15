@@ -336,6 +336,55 @@ are the part that has value later._
   `§9 Deviations`. Its `columns = 100` *is* deterministic across machines, so the dependency was not
   wrong — merely insufficient.
 
+### 2026-08-16 — S1-04 → S1-14, and the gate goes green
+
+- **S1-04** — ESLint flat config, landed before any `src/` code so the ADR-0005 rules were live
+  before there was anything to police.
+  Verified: probe file with four deliberate violations → exactly four errors, each carrying its
+  ADR-0005 message; `readFile` on the adjacent line was **not** flagged, proving the `node:fs` ban is
+  member-precise. Probe deleted. Commit `b2c83be`.
+- **S1-05 / S1-06 / S1-07 / S1-08** — tsup, vitest, the local render harness, fixtures, and the
+  listing itself. Commit `dcdd644`.
+  Verified: RED `Cannot find module '../src/app.js'` → GREEN 3 passed.
+- **S1-09** — cursor, clamping at both ends. Commit `f217da9`.
+  Verified: RED 4 failures, all `expected +0 to be 1` (no `❯` in frame) → GREEN 8 passed.
+- **S1-10** — navigation and the path header. Commit `f8b897a`.
+  Verified: RED 6 failures → GREEN 15 passed.
+- **S1-11** — sanitization. Commit `59757b0`.
+  Verified: RED 9 failures `sanitizeName is not a function` → GREEN 24 passed, including a frame
+  assertion that no raw `U+202E` reaches the screen.
+- **S1-12 / S1-13** — CLI entry, quit, non-TTY degradation, error state. Commit `f2e23ec`.
+- **S1-14** — `README.md`, this log, `docs/version/stage1.md`, `docs/STATE.md`.
+
+- **Gate green for the first time (2026-08-16):** typecheck ✓ · lint ✓ · test ✓ 36 passed (7 files)
+  · build ✓.
+
+- **Surprise — two production bugs that the unit tests could not see.** Both were found by running
+  the built binary and reading its output, not by the suite, which was green throughout.
+  1. `glim < /dev/null` crashed instead of listing. Ink types `isRawModeSupported` as `boolean` but
+     assigns it from `stdin.isTTY`, which Node sets to **`undefined`** — never `false` — on a
+     non-TTY stream. `useInput` received `{ isActive: undefined }`, fell back to its default of
+     `true`, called `setRawMode`, and threw.
+  2. Entering a mode-`000` directory produced `Unhandled Rejection: EACCES … scandir`, terminating
+     the process with the terminal still in raw mode.
+
+- **Surprise — our own test fake caused bug 1.** `FakeStdin` reported a tidy `isTTY: false`, which
+  Node never produces. The fake was better-behaved than reality and hid the defect. Fixed the **fake
+  first** so the bug reproduced inside the suite (RED), then the app — fixing the app first would
+  have left a green suite that still could not detect the regression. `isTTY` is now typed
+  `boolean | undefined` with a comment saying why. This is the strongest argument yet for Stage 3's
+  `memfs` + PTY evidence levels, and it arrived unprompted in Stage 1.
+
+- **Surprise — a lint rule correctly repeating a wrong type.** Fixing bug 1 with `Boolean(...)`
+  failed `@typescript-eslint/no-unnecessary-type-conversion`, because per Ink's *declared* type the
+  conversion is redundant. `AGENTS.md §6` forbids disabling a rule to pass, so the value is routed
+  through `unknown` and narrowed — which states the distrust in code rather than suppressing it.
+
+- **Surprise — invisible control bytes written into source twice.** `test/helpers/render.tsx` first
+  got literal `0x1b` bytes in its `KEY` constants, then over-escaped `\\u001B` after a botched
+  repair. Settled on `String.fromCharCode(0x1b)`. Notably absurd in the project whose security model
+  is "control characters are dangerous".
+
 ---
 
 ## 9. Deviations from spec
@@ -359,13 +408,78 @@ are the part that has value later._
 
 **State of the codebase.**
 
+`glim` runs. `pnpm build && node dist/cli.js ~` opens a single-pane listing of a real directory;
+`↑↓`/`kj` move a `❯` cursor that clamps at both ends, `⏎`/`→`/`l` descends, `←`/`h` ascends, `q`
+quits. A bad path argument is rejected before Ink mounts with one stderr line and exit code 2. When
+stdin is not a TTY the listing still renders read-only instead of crashing. Unreadable directories
+show a sanitized one-line error and stay navigable. 36 tests across 7 files; the four-command gate
+(`pnpm typecheck / lint / test / build`) is green. Roughly 337 lines of source and 656 of test.
+
 **Architecture as it stands.**
 
 ```
+src/
+├── cli.tsx     meow · resolveTarget() BEFORE render · exit codes 2/130/143/1
+│               · signal + uncaughtException handlers that unmount to restore
+│                 the terminal
+└── app.tsx     ONE FILE, on purpose (v1 §4). Contains:
+                  sanitizeName()      ADR-0005 chokepoint — <U+XXXX> escaping
+                  describeFsError()   errno → one sanitized line
+                  resolveTarget()     startup path validation (pure, exported)
+                  compareEntries()    dirs first, then case-insensitive name
+                  displayPath()       $HOME → ~
+                  App                 useState×4 + one readdir effect
+                                      + ONE useInput, gated { isActive }
+
+test/
+├── helpers/render.tsx   LOCAL harness, replaces ink-testing-library.
+│                        Configurable columns/rows/stdinIsTTY. Load-bearing.
+├── helpers/fixture.ts   absolute fixture paths, cwd-independent
+└── *.test.tsx           app · cursor · navigation · sanitize · target
+                         · lifecycle · errors
+
+  keypress → useInput(gated) → setState → render
+  cwd change → useEffect → readdir → try/catch → entries | error
+  every rendered string → sanitizeName() → <Text>
 ```
 
 **Load-bearing decisions carried out.**
 
+- **ADR-0001** pnpm; settings live in `pnpm-workspace.yaml` under `allowBuilds` (pnpm 11 renamed it
+  from `onlyBuiltDependencies` and ignores the `package.json` `pnpm` field entirely).
+- **ADR-0002** `typescript@6.0.3` pinned exactly — TS 7 disables typescript-eslint and with it the
+  zero-`any` floor.
+- **ADR-0003** Node ≥ 22, Ink 7.1.1. `00_PROJECT_INSPIRATION.md §4` is permanently stale; do not fix it.
+- **ADR-0005** read-only by construction, enforced by ESLint bans on mutating `node:fs`,
+  `child_process`, and all networking — in `src/` only; `test/` may mutate to build fixtures.
+- **Ink 7 supersedes two `AGENTS.md §8` instructions:** `useWindowSize()` exists (do not hand-roll a
+  resize hook — S2-02) and `render(node, { alternateScreen: true })` exists (do not emit raw
+  `\x1b[?1049h` — S2-15). Both verified against the installed `.d.ts`.
+- **`isRawModeSupported` cannot be trusted as a boolean.** It is `stdin.isTTY`, which Node sets to
+  `undefined` on non-TTY streams. `app.tsx` routes it through `unknown` and narrows. Removing that
+  round-trip reintroduces a shipped crash.
+- **`test/helpers/render.tsx` is not boilerplate.** `ink-testing-library@4` hardcodes `columns = 100`,
+  has no `rows`, and forces `isTTY = true` — it cannot express non-TTY tests or Stage 2's two-size
+  golden frames.
+
 **Known debt carried forward.**
 
+- `S2-*` — **no viewport windowing.** Every row renders. A 40,000-entry directory will hang the
+  terminal. Explicitly out of scope in v1 §3; it is a hard Stage 2 requirement.
+- `S3-04` — **no request sequencing.** Rapid key-mash can resolve `readdir` out of order, so the
+  listing may not match the header. Needs `AbortController` + a monotonic request id; do not patch it
+  in Stage 2, a partial fix reads as "handled" and stops anyone looking.
+- `S3-07` — `resolveTarget` uses `stat`, which follows symlinks. No cycle guard, no depth cap.
+- `S2-14` — the error state is one plain line with no colour and no retry. Colour is Stage 2.
+- `S3-18` — npm package name unresolved; `private: true` is the interlock (ADR-0004).
+- Cursor resets to index 0 on every navigation. Stage 2's name-anchored cursor (ADR-0006) replaces
+  this; ascending to the parent ideally lands on the directory you came from.
+
 **Read this doc only if:**
+
+- you want the rationale for `app.tsx` being one file, before refactoring it;
+- you need the full record of which Ink 7 API assumptions were verified against the installed types;
+- you are wondering why the spec grew tasks S1-15/16/17 after it froze (see §9).
+
+For the narrative version — design choices with their costs, the bugs and their causes, and what was
+gotten wrong — read [`docs/version/stage1.md`](version/stage1.md) instead. It is written for a human.

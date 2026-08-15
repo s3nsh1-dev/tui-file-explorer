@@ -7,17 +7,29 @@
 
 ---
 
-- **Stage:** 1 — in progress
-- **Branch:** `stage-1` (cut from `main` at `d773d53`). `main` holds the reviewed planning baseline
-  and receives no implementation code until Stage 1 is signed off — `AGENTS.md §5.1`
-- **Doc:** `docs/v1_STAGE_1.md` — spec **frozen** as of commit `47280b4` (S1-01)
-- **Last verified green:** never — the gate has not been run end to end yet (S1-06 delivers it)
-- **Last task completed:** S1-03 (strict `tsconfig.json`)
-- **Next task:** **S1-04** — ESLint flat config incl. the ADR-0005 security rules
-  (`eslint.config.js` is written but **unverified**; `pnpm lint` has never run)
-- **Blocked on:** nothing
+- **Stage:** 1 — **code complete, awaiting CHECKPOINT 1**
+- **Branch:** `stage-1`. `main` is human-only and frozen at `46153a1`; `develop` is the integration
+  branch — `AGENTS.md §5.1`
+- **Doc:** `docs/v1_STAGE_1.md` — spec **frozen** as of `47280b4` (S1-01), amended once by
+  maintainer instruction (see §9 Deviations)
+- **Last verified green:** 2026-08-16 — typecheck ✓ lint ✓ test ✓ (36 passed, 7 files) build ✓
+- **Last task completed:** S1-15 — `docs/version/stage1.md` retrospective written
+- **Next task:** **S1-16 — CHECKPOINT 1 · HUMAN GATE.** A human must run the binary in a real
+  terminal. I have no TTY and no eyes; this cannot be self-certified (`AGENTS.md §2`)
+- **Blocked on:** **HUMAN GATE — CHECKPOINT 1.** See `v1 §7 Human gates` for the five things to look
+  at. S1-17 (merge `stage-1` → `develop`) does not happen until it passes
 - **Open ADRs:** none proposed. ADR-0001 … ADR-0005 are **Accepted**
 - **Do not touch:** n/a
+
+### Stage 1 at a glance
+
+| | |
+|---|---|
+| Commits on `stage-1` | 13 |
+| Tests | 36 passing, 7 files |
+| Source | 337 lines (`src/app.tsx`, `src/cli.tsx`) |
+| Bugs found and fixed | 4 — two of them only visible by running the built binary |
+| Retrospective | [`docs/version/stage1.md`](version/stage1.md) |
 
 ### Decisions locked during planning (2026-08-15)
 
@@ -30,7 +42,7 @@
 | Security posture | read-only by construction; sanitization chokepoint | ADR-0005 |
 | Platforms | **Linux only** | `v3 §3` |
 | Publishing | release-ready, never fired | `v3 §3` |
-| Checkpoints | **2** — after Stage 1 (`S1-15`) and after Stage 2 (`S2-18`) | `v1 §7`, `v2 §7` |
+| Checkpoints | **2** — after Stage 1 (`S1-16`) and after Stage 2 (`S2-19`) | `v1 §7`, `v2 §7` |
 
 > ⚠ `00_PROJECT_INSPIRATION.md §4` says Node 20 / Ink 6, and `§1` says `glim` is free on npm. Both
 > are stale. That file is IMMUTABLE and stays stale on purpose — ADR-0002/0003/0004 win.
@@ -41,24 +53,33 @@
 
 ```text
 glim/
-├── AGENTS.md                 §6 green gate now reads pnpm (ADR-0001)
-├── CLAUDE.md                 §1 and §3 now read pnpm (ADR-0001)
+├── package.json · pnpm-lock.yaml · pnpm-workspace.yaml   allowBuilds: esbuild
+├── tsconfig.json · eslint.config.js · tsup.config.ts · vitest.config.ts
+├── .gitignore · .editorconfig · .npmrc      engine-strict=true
+├── README.md
+├── AGENTS.md · CLAUDE.md                    §5.1 three-tier branching
+├── src/
+│   ├── cli.tsx               meow · validate-before-mount · exit codes
+│   └── app.tsx               ONE FILE by design (v1 §4)
+├── test/
+│   ├── helpers/render.tsx    LOCAL harness — replaces ink-testing-library
+│   ├── helpers/fixture.ts
+│   ├── fixtures/basic/       incl. a real U+202E filename
+│   └── 7 × *.test.tsx        36 tests
 └── docs/
     ├── 00_PROJECT_INSPIRATION.md   IMMUTABLE — partly stale, see ADRs
     ├── STATE.md              ← you are here
     ├── _TEMPLATE_STAGE.md
-    ├── v1_STAGE_1.md         spec complete, ready to execute
+    ├── v1_STAGE_1.md         frozen spec + implementation log + handoff
     ├── v2_STAGE_2.md         PROVISIONAL — reconcile + freeze at Stage 2 kickoff
     ├── v3_STAGE_3.md         PROVISIONAL — reconcile + freeze at Stage 3 kickoff
-    └── adr/
-        ├── ADR-0001-pnpm-as-package-manager.md
-        ├── ADR-0002-pin-typescript-6.md
-        ├── ADR-0003-node-22-ink-7-floor.md
-        ├── ADR-0004-npm-name-collision.md
-        └── ADR-0005-read-only-by-construction.md
+    ├── version/
+    │   ├── _TEMPLATE_RETROSPECTIVE.md
+    │   └── stage1.md         ✅ the Stage 1 story, for humans
+    └── adr/ADR-0001 … ADR-0005
 ```
 
-Not a git repository yet. No `package.json`. No `src/`. No tests. **No code has been written.**
+`dist/` is gitignored and built on demand. `pnpm build && node dist/cli.js ~` runs the app today.
 
 ---
 
@@ -66,7 +87,7 @@ Not a git repository yet. No `package.json`. No `src/`. No tests. **No code has 
 
 ```markdown
 - **Stage:** 2 (in progress)
-- **Branch:** `stage-2` (cut from `main` at <sha>)
+- **Branch:** `stage-2` (cut from `develop` at <sha>)
 - **Doc:** docs/v2_STAGE_2.md
 - **Last verified green:** 2026-08-14 14:20 — typecheck ✓ lint ✓ test ✓ (34 passed) build ✓
 - **Last task completed:** S2-07 viewport windowing
@@ -88,9 +109,9 @@ Rules:
 
 ## Stage ledger
 
-| Stage | Doc | Branch | Started | Completed | Merged to `main` | Retrospective | Signed off by |
+| Stage | Doc | Branch | Started | Completed | Merged to `develop` | Retrospective | Signed off by |
 |---|---|---|---|---|---|---|---|
-| 1 — Walking Skeleton | `docs/v1_STAGE_1.md` | `stage-1` | 2026-08-15 | — | — | `docs/version/stage1.md` | — |
+| 1 — Walking Skeleton | `docs/v1_STAGE_1.md` | `stage-1` | 2026-08-15 | 2026-08-16 (pending gate) | — | ✅ `docs/version/stage1.md` | — |
 | 2 — Real Application | `docs/v2_STAGE_2.md` | `stage-2` | — | — | — | `docs/version/stage2.md` | — |
 | 3 — Production | `docs/v3_STAGE_3.md` | `stage-3` | — | — | — | `docs/version/stage3.md` | — |
 
