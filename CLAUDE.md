@@ -10,10 +10,14 @@
 
 ```bash
 cat docs/STATE.md
+git branch --show-current     # must be stage-{N}, never main — AGENTS.md §5.1
 git log --oneline -10
 git status
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
+
+**If that second command prints `main`, stop.** You are one keystroke from writing implementation
+code onto the reviewed baseline. Cut or check out `stage-{N}` first.
 
 > **pnpm, not npm** (`docs/adr/ADR-0001`). Also read `docs/adr/` before the stage doc on your first
 > session — five ADRs were written during planning and two of them (0002 TypeScript pin, 0003 Ink 7 /
@@ -148,14 +152,21 @@ Rules:
 
 When a stage begins:
 
-1. `cp docs/_TEMPLATE_STAGE.md docs/v{N}_STAGE_{N}.md`
-2. Paste the previous stage's `## Handoff` content into `§0 Entry Point`. (For v1, delete §0.)
-3. Fill the spec sections **above the BUILD LINE**: intent, scope in/out, approach, architecture
+1. **Cut the branch first:** `git checkout main && git checkout -b stage-{N}`. Everything below
+   happens on that branch. (`AGENTS.md §5.1`)
+2. `cp docs/_TEMPLATE_STAGE.md docs/v{N}_STAGE_{N}.md`
+3. Paste the previous stage's `## Handoff` content into `§0 Entry Point`. (For v1, delete §0.)
+4. Fill the spec sections **above the BUILD LINE**: intent, scope in/out, approach, architecture
    diagram, ordered task list with IDs, machine-checkable DoD.
-4. **Stop.** Present the spec for human review.
-5. Only after approval: first commit, spec freezes, work starts.
+5. **Stop.** Present the spec for human review.
+6. Only after approval: first commit, spec freezes, work starts.
 
-Writing code before step 5 means the spec gets bent to match whatever you happened to build.
+Writing code before step 6 means the spec gets bent to match whatever you happened to build.
+
+> For v2 and v3 specifically: those docs were drafted during planning and are marked
+> **PROVISIONAL**. At their kickoff you reconcile them against what the previous stage actually
+> built, *then* freeze. That reconciliation is step 4, and it is the last legitimate edit above the
+> BUILD LINE.
 
 ---
 
@@ -167,8 +178,15 @@ Writing code before step 5 means the spec gets bent to match whatever you happen
 3. Any `HUMAN GATE` items: state them explicitly and wait.
 4. Write `## Handoff` — this is you telling the next agent what it needs. Be specific about debt,
    surprises, and load-bearing decisions. Assume it will not read your stage's log.
-5. Update `docs/STATE.md`.
-6. **Stop and request sign-off.** Do not start the next stage.
+5. **Write `docs/version/stage{N}.md`** from `docs/version/_TEMPLATE_RETROSPECTIVE.md`
+   (`AGENTS.md §4.6`). This one is for the *human*, not the next agent — prose, the reasoning behind
+   each real choice, the surprises, the bugs with their guarding tests, and an honest "what we got
+   wrong". Source it from the log you appended below the BUILD LINE *as you worked*; if you left that
+   log thin, you cannot write this section honestly now, and that is the cost of skipping it.
+6. Update `docs/STATE.md`, including the `Branch` field.
+7. **Stop and request sign-off.** Do not start the next stage. Do not merge.
+8. **After** sign-off: merge `stage-{N}` → `main`, and record the merge date and the human's name in
+   the retrospective's *At a glance* table. An agent never fills in "Signed off by".
 
 ---
 

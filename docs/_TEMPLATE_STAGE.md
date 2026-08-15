@@ -3,6 +3,10 @@
 > **Agent mentality for this stage:** {Bricklayer | Craftsperson | Auditor} — see
 > `00_PROJECT_INSPIRATION.md §7`.
 > **Status:** Spec (frozen on first commit) | In progress | Complete
+> **Branch:** `stage-{N}` — cut from `main` at kickoff, merged back only after sign-off
+> (`AGENTS.md §5.1`).
+> **Retrospective:** `docs/version/stage{N}.md` — written at close, IMMUTABLE after
+> (`AGENTS.md §4.6`).
 
 ---
 
@@ -116,8 +120,16 @@ Machine-checkable where possible. "Looks good" is not an entry.
 **Docs:**
 - [ ] Implementation log below the BUILD LINE is complete and dated
 - [ ] ADRs written for durable decisions
-- [ ] `docs/STATE.md` updated
+- [ ] `docs/STATE.md` updated (including the `Branch` field)
 - [ ] `## Handoff` written
+- [ ] `docs/version/stage{N}.md` written from `docs/version/_TEMPLATE_RETROSPECTIVE.md`
+      (`AGENTS.md §4.6`) — **before** the human gate, so the reviewer reads the history while
+      reviewing, not after
+
+**Branch (`AGENTS.md §5.1`):**
+- [ ] All work on `stage-{N}`, cut from `main` at kickoff
+- [ ] One commit per task ID, each with a `Verified:` line
+- [ ] Merge to `main` **only** after the human gate passes — never before
 
 ---
 

@@ -4,6 +4,10 @@
 > **Status:** ⚠ **PROVISIONAL — not frozen.** Written during planning on 2026-08-15, before Stage 1
 > existed, at the maintainer's request for a full three-stage roadmap.
 >
+> **Branch:** `stage-2` — cut from `main` at kickoff, merged back only after CHECKPOINT 2
+> (`AGENTS.md §5.1`).
+> **Retrospective:** `docs/version/stage2.md`, written at S2-18.
+>
 > **This spec freezes at the kickoff of Stage 2, not now.** Before the first commit of this stage,
 > the agent must: (1) paste v1's `## Handoff` into `§0` below, (2) reconcile this spec against what
 > Stage 1 actually produced, (3) present the reconciled spec for human review, and only then start
@@ -230,7 +234,7 @@ and retrofitting either into finished components is a rewrite.
 | ID | Task | Depends on | Evidence level |
 |---|---|---|---|
 | S2-01 | `state/` — reducer, actions, selectors; name-anchored cursor + clamping. **ADR-0006.** Unit-tested with no rendering at all | v1 | L1 + unit |
-| S2-02 | `ui/hooks/useTerminalSize.ts` — `useStdout()` + `resize` subscription; never hardcode 80×24 | v1 | L1 |
+| S2-02 | Terminal size. **Ink 7 ships `useWindowSize()`** — returns `{columns, rows}` and re-renders on resize (verified in `ink/build/hooks/use-window-size.d.ts`, 2026-08-15). Use it; do **not** hand-roll the planned `ui/hooks/useTerminalSize.ts` | v1 | L1 |
 | S2-03 | Windowing — pure `window()` in selectors, scroll margin, `Row` memoized with stable keys | S2-01, S2-02 | L1 |
 | S2-04 | Golden-frame harness — pinned columns/rows, `toMatchFileSnapshot`, snapshot dir committed | S2-02 | **L2** |
 | S2-05 | `ui/Frame.tsx` — border, header, two-pane split; preview collapses below the width threshold | S2-04 | **L2** |
@@ -243,10 +247,12 @@ and retrofitting either into finished components is a rewrite.
 | S2-12 | `?` help overlay | S2-11 | **L2** |
 | S2-13 | `ui/theme.ts` — semantic tokens, `NO_COLOR` respected | S2-05 | **L2** |
 | S2-14 | Loading and error states per pane; sanitized single-line failure text; keymap stays alive | S2-07 | **L2** |
-| S2-15 | Alternate screen buffer, integrated with the v1 exit/signal handlers. **ADR-0007** | S2-14 | L1 |
+| S2-15 | Alternate screen buffer. **Ink 7 supports `render(node, { alternateScreen: true })` natively**, including teardown (verified in `ink/build/render.d.ts`, 2026-08-15). Do **not** write raw `\x1b[?1049h`/`[?1049l` as `AGENTS.md §8` suggests — that advice is Ink 6-era. ADR-0007 shrinks to "we use Ink's option, and here is how it interacts with the S1-13 signal handlers" | S2-14 | L1 |
 | S2-16 | Golden-frame sweep — every layout state snapshotted at 80×24 and 120×40; each diff reviewed by hand | all above | **L2** |
-| S2-17 | Log, ADRs, `docs/STATE.md`, `§10 Handoff` | S2-16 | docs |
-| S2-18 | **CHECKPOINT 2** — maintainer runs it | S2-17 | **L4 HUMAN GATE** |
+| S2-17 | Log, ADRs, `docs/STATE.md`, `§10 Handoff` — **including the full Stage 3 `core/` ⟂ `ui/` split plan**, so it is reviewed at Checkpoint 2 rather than needing a third interruption (`v3 §5`) | S2-16 | docs |
+| S2-18 | `docs/version/stage2.md` — narrative retrospective (`AGENTS.md §4.6`), written **before** the gate | S2-17 | docs |
+| S2-19 | **CHECKPOINT 2** — maintainer runs it | S2-18 | **L4 HUMAN GATE** |
+| S2-20 | Merge `stage-2` → `main`. **Only after S2-19 passes.** | S2-19 | — |
 
 ---
 
@@ -281,14 +287,18 @@ and retrofitting either into finished components is a rewrite.
 
 **Human gates:**
 
-- [ ] **CHECKPOINT 2 (S2-18).** The maintainer runs `glim` on a real directory and confirms: colour
+- [ ] **CHECKPOINT 2 (S2-19).** The maintainer runs `glim` on a real directory and confirms: colour
       contrast on the selected row is readable in their terminal theme; box-drawing characters render
       in their font (or the ASCII fallback is acceptable); scrolling a large directory does not
       flicker; the alternate screen restores their scrollback on exit. **Every one of these is L4 by
       definition — I cannot see colour, fonts, or flicker.** This is the last checkpoint; Stage 3
       changes nothing visual.
 
-**Docs:** log complete · ADRs written · `docs/STATE.md` updated · `§10 Handoff` written.
+**Docs:** log complete · ADRs written · `docs/STATE.md` updated (incl. `Branch`) · `§10 Handoff`
+written · **`docs/version/stage2.md` retrospective written** (`AGENTS.md §4.6`).
+
+**Branch (`AGENTS.md §5.1`):** all work on `stage-2`, cut from `main` after Stage 1 was signed off ·
+one commit per task ID with a `Verified:` line · merged to `main` only after CHECKPOINT 2 (S2-20).
 
 ---
 
