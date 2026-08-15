@@ -25,7 +25,7 @@
 
 | | |
 |---|---|
-| Commits on `stage-1` | 13 |
+| Commits on `stage-1` | 14 |
 | Tests | 36 passing, 7 files |
 | Source | 337 lines (`src/app.tsx`, `src/cli.tsx`) |
 | Bugs found and fixed | 4 — two of them only visible by running the built binary |

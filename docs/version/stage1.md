@@ -13,7 +13,7 @@
 | **Cut from `develop`** | 2026-08-15 |
 | **Merged to `develop`** | _pending — S1-17, after sign-off_ |
 | **Signed off by** | _pending — CHECKPOINT 1 (S1-16)_ |
-| **Commits** | 13 |
+| **Commits** | 14 |
 | **Tests at close** | 36 passing, 7 files |
 | **Source size** | 337 lines across `src/app.tsx` + `src/cli.tsx` |
 | **Test size** | 656 lines — roughly 2:1 test to source |
