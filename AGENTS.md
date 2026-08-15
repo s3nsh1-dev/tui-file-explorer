@@ -96,12 +96,25 @@ docs/
 ├── v1_STAGE_1.md               spec frozen at kickoff · log appended during
 ├── v2_STAGE_2.md               "
 ├── v3_STAGE_3.md               "
+├── version/                    the human-readable history — see §4.6
+│   ├── _TEMPLATE_RETROSPECTIVE.md   IMMUTABLE   copy this to close a stage
+│   ├── stage1.md               IMMUTABLE once written
+│   ├── stage2.md               "
+│   └── stage3.md               "
 └── adr/
     ├── ADR-0001-<slug>.md      one decision, never edited (supersede instead)
     └── ...
 AGENTS.md                       this file
 CLAUDE.md                       Claude Code specifics
 ```
+
+**Three doc types, three different jobs.** Do not merge them:
+
+| File | Written | Audience | Answers |
+|---|---|---|---|
+| `v{N}_STAGE_{N}.md` | before + during | agents | "what am I building, and what happened" |
+| `adr/ADR-000N.md` | at the moment of decision | agents | "why is it this way, so nobody re-litigates" |
+| `version/stage{N}.md` | at stage close | **humans, reading later** | "what is the story of this stage" |
 
 ### 4.2 The BUILD LINE
 
@@ -199,9 +212,56 @@ The single answer to "where are we". Rewritten at the end of every session:
 If you end a session without updating this file, the next agent starts blind. This is the most
 common way agent-built projects rot.
 
+### 4.6 `docs/version/stage{N}.md` — the retrospective
+
+Written **once, at stage close**, from `docs/version/_TEMPLATE_RETROSPECTIVE.md`. **IMMUTABLE
+afterwards.** If a later stage proves it wrong, the correction goes in *that* stage's retrospective.
+
+This is not a summary of the stage doc. The stage doc is a contract with a log attached; this is
+**the story, for a human reading all three in order, months later.** It carries what `git log` cannot:
+
+- **Design choices and what they cost** — one per decision a reasonable person could have made
+  differently, with the alternative stated fairly. If you cannot name what a choice made *harder*,
+  you have not understood it yet.
+- **Surprises** — what you believed at kickoff that turned out false, and the command or failing test
+  that tipped you off.
+- **Bugs found and fixed** — symptom, root cause, fix, commit, **and the test that now guards it.**
+  A bug with no guarding test is not fixed; it is postponed.
+- **What you got wrong** — reversed decisions, unbuildable spec items, time spent in the wrong
+  direction. A retrospective with an empty "what we got wrong" section is marketing, and the next
+  agent will learn nothing from it.
+
+Write it as prose. Checklists belong in the stage doc.
+
 ---
 
-## 5. Task and commit discipline
+## 5. Branch, task, and commit discipline
+
+### 5.1 Branching — one branch per stage
+
+```
+main ──●──────────────────────────●──────────────────────●────────►
+       │  (reviewed baseline)     ↑ merge after sign-off ↑
+       └── stage-1 ──●──●──●──●───┘                      │
+                      (S1-01 … S1-15)                    │
+                        main ── stage-2 ──●──●──●──●─────┘
+                                           (S2-01 … S2-18)
+```
+
+- **`main` holds only signed-off work.** It is the baseline a human reviews against. An agent never
+  commits implementation code directly to `main`.
+- **Cut `stage-{N}` from `main` at stage kickoff**, before the first line of code:
+  `git checkout main && git pull && git checkout -b stage-{N}`.
+- **All stage work lands on that branch**, one commit per task ID.
+- **Merge to `main` only after the stage's `HUMAN GATE` passes.** The merge is part of the stage
+  completion ritual (`§10`), not something you do because the tests went green.
+- **Docs that govern all stages** — `AGENTS.md`, `CLAUDE.md`, `_TEMPLATE_*`, `docs/version/` — may go
+  straight to `main`, because they are not stage output. Merge `main` into the live stage branch
+  afterwards so it inherits them.
+- If you find yourself on `main` with uncommitted source changes, **stop and branch** before doing
+  anything else.
+
+### 5.2 Tasks and commits
 
 Tasks are IDs: `S{stage}-{nn}`, e.g. `S1-03`, `S2-11`. They come from the stage doc's task list.
 Never invent a task outside the list — propose it, get it added above the BUILD LINE *before* the
@@ -301,23 +361,30 @@ A question costs one message. A wrong guess propagates through three stages.
 ```
 START
   □ read docs/STATE.md
+  □ `git branch --show-current` — are you on stage-{N}? if on main, STOP and branch (§5.1)
   □ read current stage doc (Entry Point + spec + log tail)
   □ run the green gate — confirm you inherited a working tree
   □ state which task ID you are starting
 
 DURING
   □ one task at a time, in doc order
+  □ ONE COMMIT PER TASK ID — not one commit at the end of the session
   □ tests written alongside, not after
   □ evidence captured for every UI claim
-  □ log surprises below the BUILD LINE as they happen
+  □ log surprises below the BUILD LINE as they happen — that log is the raw
+    material for the retrospective; reconstructing it later loses the detail
 
 END
   □ green gate passes
   □ stage doc log appended (dated, task IDs, deviations)
   □ ADRs written for anything durable
-  □ docs/STATE.md rewritten
+  □ docs/STATE.md rewritten (including the Branch field)
   □ committed with Verified: lines
-  □ if stage complete → write §Handoff, then STOP and request human sign-off
+  □ if stage complete →
+      □ write §Handoff in the stage doc
+      □ write docs/version/stage{N}.md from the retrospective template (§4.6)
+      □ STOP and request human sign-off
+      □ merge stage-{N} → main ONLY after sign-off (§5.1)
 ```
 
 **Stage transitions are human-gated.** An agent never declares a stage complete and rolls into the
