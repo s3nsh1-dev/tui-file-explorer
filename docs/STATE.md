@@ -111,7 +111,7 @@ Rules:
 
 | Stage | Doc | Branch | Started | Completed | Merged to `develop` | Retrospective | Signed off by |
 |---|---|---|---|---|---|---|---|
-| 1 — Walking Skeleton | `docs/v1_STAGE_1.md` | `stage-1` | 2026-08-15 | 2026-08-16 (pending gate) | — | ✅ `docs/version/stage1.md` | — |
+| 1 — Walking Skeleton | `docs/v1_STAGE_1.md` | `stage-1` | 2026-08-15 | 2026-08-16 | 2026-08-16 | ✅ `docs/version/stage1.md` | Shubham Pandey |
 | 2 — Real Application | `docs/v2_STAGE_2.md` | `stage-2` | — | — | — | `docs/version/stage2.md` | — |
 | 3 — Production | `docs/v3_STAGE_3.md` | `stage-3` | — | — | — | `docs/version/stage3.md` | — |
 
