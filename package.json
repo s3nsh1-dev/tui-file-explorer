@@ -1,0 +1,42 @@
+{
+  "name": "glim",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A keyboard-driven terminal file explorer built on Ink.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "glim": "./dist/cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.18.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsup",
+    "dev": "tsup && node dist/cli.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "ink": "7.1.1",
+    "meow": "14.1.0",
+    "react": "19.2.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.18",
+    "eslint": "10.8.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.6",
+    "tsup": "8.5.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.10"
+  }
+}

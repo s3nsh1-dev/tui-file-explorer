@@ -1,7 +1,9 @@
 # v1 — Stage 1: Walking Skeleton
 
 > **Agent mentality for this stage:** Bricklayer — see `00_PROJECT_INSPIRATION.md §7`.
-> **Status:** Spec — freezes on the first commit of this stage.
+> **Status:** In progress. Spec **frozen** as of `47280b4` (S1-01).
+> **Branch:** `stage-1`, cut from `main` at `d773d53`. `main` receives nothing until S1-17.
+> **Retrospective:** `docs/version/stage1.md`, written at S1-15.
 >
 > *(§0 Entry Point is deliberately absent. v1 starts from nothing; there is no prior stage to
 > summarise. See `_TEMPLATE_STAGE.md` §0.)*
@@ -192,7 +194,9 @@ Ordered. Do them in order unless a dependency says otherwise. One task ID per co
 | S1-12 | `src/cli.tsx` — `meow` with `--help`/`--version`; resolve + `lstat` the path arg; `ENOENT`/`ENOTDIR`/`EACCES` → sanitized stderr message + exit 2 | S1-10 | **L1** |
 | S1-13 | Lifecycle — `q` quits via `useApp().exit()`; `isRawModeSupported === false` degrades with a message instead of throwing; terminal restored on `exit`/`SIGINT`/`SIGTERM`/`uncaughtException`; `SIGINT` → exit 130 | S1-12 | **L1** |
 | S1-14 | `README.md` (install, run, keys, Node 22 requirement); log below the BUILD LINE; `docs/STATE.md`; `§10 Handoff` | S1-13 | docs |
-| S1-15 | **CHECKPOINT 1** — maintainer runs the binary in a real terminal | S1-14 | **L4 HUMAN GATE** |
+| S1-15 | `docs/version/stage1.md` — the narrative retrospective (`AGENTS.md §4.6`). Written **before** the gate so the reviewer reads the history while reviewing | S1-14 | docs |
+| S1-16 | **CHECKPOINT 1** — maintainer runs the binary in a real terminal | S1-15 | **L4 HUMAN GATE** |
+| S1-17 | Merge `stage-1` → `main`. **Only after S1-16 passes.** Record merge date + signer in the retrospective | S1-16 | — |
 
 Evidence levels: L1 frame assertion · L2 golden frame · L3 PTY e2e · L4 human gate (`AGENTS.md §2`).
 
@@ -238,7 +242,7 @@ Evidence levels: L1 frame assertion · L2 golden frame · L3 PTY e2e · L4 human
 
 **Human gates:**
 
-- [ ] **CHECKPOINT 1 (S1-15).** The maintainer runs `pnpm build && node dist/cli.js ~` in a real
+- [ ] **CHECKPOINT 1 (S1-16).** The maintainer runs `pnpm build && node dist/cli.js ~` in a real
       terminal on Linux and confirms, with their own eyes:
       1. the listing appears and the `❯` cursor is visible and legible;
       2. arrow keys move it without flicker;
@@ -253,8 +257,15 @@ Evidence levels: L1 frame assertion · L2 golden frame · L3 PTY e2e · L4 human
 
 - [ ] Implementation log below the BUILD LINE is complete and dated
 - [ ] ADRs written for durable decisions
-- [ ] `docs/STATE.md` updated
+- [ ] `docs/STATE.md` updated (including the `Branch` field)
 - [ ] `## Handoff` written
+- [ ] `docs/version/stage1.md` written from the retrospective template (`AGENTS.md §4.6`)
+
+**Branch (`AGENTS.md §5.1`):**
+
+- [ ] All Stage 1 work on `stage-1`; `main` untouched since `d773d53`
+- [ ] One commit per task ID, each carrying a `Verified:` line
+- [ ] `stage-1` merged to `main` **only** after CHECKPOINT 1 passes (S1-17)
 
 ---
 
@@ -281,6 +292,99 @@ are the part that has value later._
 - **Surprise:** the repo was not a git repository and `docs/adr/` did not exist, despite
   `STATE.md` describing it as present-and-empty. Both fold into `S1-01`.
 
+### 2026-08-15 — S1-01 → S1-03, and four surprises
+
+- **S1-01** — `git init` on `main`; `.gitignore` (blocking `package-lock.json`), `.editorconfig`,
+  `.npmrc` with `engine-strict=true`.
+  Verified: commit `47280b4`; `git status --short` clean for those paths.
+- **S1-02** — dependency set pinned exactly, all versions resolved live via `npm view`.
+  Verified: commit `109ecf9`; `pnpm install` exits 0 with no ignored-build error.
+- **S1-03** — strict `tsconfig.json`.
+  Verified: commit `d96ee73`. Typecheck deliberately **not** run — with no `src/` or `test/` yet it
+  would pass vacuously, and a vacuous green is worse than no green.
+
+- **Process correction (maintainer, mid-session):** I scaffolded S1-01…S1-03 directly on `main` with
+  no commits at all. The maintainer caught it. Restructured: `main` now holds only the reviewed
+  planning baseline (`d773d53`), and all Stage 1 work moved to the `stage-1` branch with one commit
+  per task ID. `AGENTS.md §5.1` now encodes the rule so it cannot recur silently.
+
+- **Surprise — pnpm blocked a build script at S1-02, two stages early.** `esbuild` (transitive under
+  tsup and vitest) had its postinstall refused, which would have left both the bundler and the test
+  runner broken. This is precisely the failure ADR-0001 predicted for Stage 3's `node-pty`; it simply
+  arrived first. Fixing it surfaced a second fact: **pnpm 11 renamed the setting.** pnpm 10's
+  `onlyBuiltDependencies` (a list, in `package.json`) is now `allowBuilds` (a map, in
+  `pnpm-workspace.yaml`), and pnpm 11 **silently ignores the `pnpm` field in `package.json`** with
+  only a warning. ADR-0001 and `v3 §S3-14` both name the old setting; `pnpm-workspace.yaml` carries a
+  comment correcting them at the point of use.
+
+- **Surprise — Ink 7 has built-in solutions for two things the docs told me to hand-roll.** Reading
+  `node_modules/ink/build/index.d.ts` (per `CLAUDE.md §3`) turned up:
+  - `useWindowSize()` — returns `{columns, rows}` and re-renders on resize. This **replaces** the
+    planned `ui/hooks/useTerminalSize.ts` at `S2-02`.
+  - `render(node, { alternateScreen: true })` — Ink 7 manages the alternate screen buffer natively,
+    including teardown. This **replaces** `S2-15`'s plan to write raw `\x1b[?1049h` / `[?1049l`, and
+    makes the planned ADR-0007 much smaller. `AGENTS.md §8`'s advice here is Ink 6-era.
+  - Also present and unknown to me beforehand: `renderToString`, `usePaste`, `useCursor`,
+    `incrementalRendering`, `maxFps`, kitty keyboard protocol support, and an `interactive` option
+    that already auto-detects non-TTY — relevant to Stage 3's A11/A12 adversaries.
+
+- **Surprise — `ink-testing-library@4` cannot express two of this stage's own requirements.** Reading
+  its 90-line source: `columns` is a hardcoded getter returning `100`, there is no `rows` property at
+  all, and its fake stdin sets `isTTY = true` unconditionally. Since Ink derives
+  `isRawModeSupported` directly from `stdin.isTTY` (`ink/build/components/App.js:121`), the S1-13 DoD
+  item about raw-mode degradation cannot be tested through it. Replaced by a local harness; see
+  `§9 Deviations`. Its `columns = 100` *is* deterministic across machines, so the dependency was not
+  wrong — merely insufficient.
+
+### 2026-08-16 — S1-04 → S1-14, and the gate goes green
+
+- **S1-04** — ESLint flat config, landed before any `src/` code so the ADR-0005 rules were live
+  before there was anything to police.
+  Verified: probe file with four deliberate violations → exactly four errors, each carrying its
+  ADR-0005 message; `readFile` on the adjacent line was **not** flagged, proving the `node:fs` ban is
+  member-precise. Probe deleted. Commit `b2c83be`.
+- **S1-05 / S1-06 / S1-07 / S1-08** — tsup, vitest, the local render harness, fixtures, and the
+  listing itself. Commit `dcdd644`.
+  Verified: RED `Cannot find module '../src/app.js'` → GREEN 3 passed.
+- **S1-09** — cursor, clamping at both ends. Commit `f217da9`.
+  Verified: RED 4 failures, all `expected +0 to be 1` (no `❯` in frame) → GREEN 8 passed.
+- **S1-10** — navigation and the path header. Commit `f8b897a`.
+  Verified: RED 6 failures → GREEN 15 passed.
+- **S1-11** — sanitization. Commit `59757b0`.
+  Verified: RED 9 failures `sanitizeName is not a function` → GREEN 24 passed, including a frame
+  assertion that no raw `U+202E` reaches the screen.
+- **S1-12 / S1-13** — CLI entry, quit, non-TTY degradation, error state. Commit `f2e23ec`.
+- **S1-14** — `README.md`, this log, `docs/version/stage1.md`, `docs/STATE.md`.
+
+- **Gate green for the first time (2026-08-16):** typecheck ✓ · lint ✓ · test ✓ 36 passed (7 files)
+  · build ✓.
+
+- **Surprise — two production bugs that the unit tests could not see.** Both were found by running
+  the built binary and reading its output, not by the suite, which was green throughout.
+  1. `glim < /dev/null` crashed instead of listing. Ink types `isRawModeSupported` as `boolean` but
+     assigns it from `stdin.isTTY`, which Node sets to **`undefined`** — never `false` — on a
+     non-TTY stream. `useInput` received `{ isActive: undefined }`, fell back to its default of
+     `true`, called `setRawMode`, and threw.
+  2. Entering a mode-`000` directory produced `Unhandled Rejection: EACCES … scandir`, terminating
+     the process with the terminal still in raw mode.
+
+- **Surprise — our own test fake caused bug 1.** `FakeStdin` reported a tidy `isTTY: false`, which
+  Node never produces. The fake was better-behaved than reality and hid the defect. Fixed the **fake
+  first** so the bug reproduced inside the suite (RED), then the app — fixing the app first would
+  have left a green suite that still could not detect the regression. `isTTY` is now typed
+  `boolean | undefined` with a comment saying why. This is the strongest argument yet for Stage 3's
+  `memfs` + PTY evidence levels, and it arrived unprompted in Stage 1.
+
+- **Surprise — a lint rule correctly repeating a wrong type.** Fixing bug 1 with `Boolean(...)`
+  failed `@typescript-eslint/no-unnecessary-type-conversion`, because per Ink's *declared* type the
+  conversion is redundant. `AGENTS.md §6` forbids disabling a rule to pass, so the value is routed
+  through `unknown` and narrowed — which states the distrust in code rather than suppressing it.
+
+- **Surprise — invisible control bytes written into source twice.** `test/helpers/render.tsx` first
+  got literal `0x1b` bytes in its `KEY` constants, then over-escaped `\\u001B` after a botched
+  repair. Settled on `String.fromCharCode(0x1b)`. Notably absurd in the project whose security model
+  is "control characters are dangerous".
+
 ---
 
 ## 9. Deviations from spec
@@ -290,6 +394,8 @@ are the part that has value later._
 | — | `00_INSPIRATION §4`: Node 20+, Ink 6 | Ink 7.1.1, `engines: node>=22` | Ink shipped a major version | ADR-0003 — inspiration doc is IMMUTABLE and stays stale by design |
 | — | `00_INSPIRATION §1`: `glim` is free on npm | Taken since 2022 | Registry changed | ADR-0004 |
 | — | `AGENTS.md §6`: `npm run …` | Maintainer uses pnpm | Toolchain preference | ADR-0001 — command strings updated in `AGENTS.md §6`, `CLAUDE.md §1`+`§3`, and `_TEMPLATE_STAGE.md §7` |
+| S1-15/16/17 | Task list ended at S1-15 (CHECKPOINT 1) | Three tasks added **after the spec froze** at `47280b4`: S1-15 retrospective, S1-16 checkpoint (renumbered), S1-17 merge | **Maintainer instruction, mid-stage** (2026-08-15) — asked for branch-per-stage and a narrative `docs/version/stage{N}.md` history. `AGENTS.md §9` makes changing a frozen spec a stop-and-ask; the maintainer pre-empted the ask by instructing it directly | Accepted. Spec amended above the BUILD LINE **by authorisation, not by drift** — recorded here so the freeze remains meaningful. `AGENTS.md §4.6`+`§5.1` are the new contract |
+| S1-06 | `ink-testing-library` is the component test tool (`00_INSPIRATION §4`) | v4 hardcodes `columns = 100`, exposes no `rows`, and its fake stdin is permanently `isTTY = true` | Its fixed stdin makes the S1-13 DoD item — "rendering with `isRawModeSupported === false` does not throw" — literally unwritable, and Stage 2 needs 80×24 + 120×40 golden frames | Replaced with a ~50-line typed harness in `test/helpers/render.tsx` that keeps the same call shape. Dependency removed. Detail in the log below |
 | — | `_TEMPLATE_STAGE.md` is IMMUTABLE (`AGENTS.md §4.1`) | Its DoD block still said `npm run …` | It is a **tool**, not a record — a stale gate propagates into every future stage doc copied from it. Changing a command string does not drift the stage *format*, which is what its immutability protects | Edited. `00_PROJECT_INSPIRATION.md` was **not** touched: that one is a record of what we believed, and stays stale by design |
 
 ---
@@ -302,13 +408,78 @@ are the part that has value later._
 
 **State of the codebase.**
 
+`glim` runs. `pnpm build && node dist/cli.js ~` opens a single-pane listing of a real directory;
+`↑↓`/`kj` move a `❯` cursor that clamps at both ends, `⏎`/`→`/`l` descends, `←`/`h` ascends, `q`
+quits. A bad path argument is rejected before Ink mounts with one stderr line and exit code 2. When
+stdin is not a TTY the listing still renders read-only instead of crashing. Unreadable directories
+show a sanitized one-line error and stay navigable. 36 tests across 7 files; the four-command gate
+(`pnpm typecheck / lint / test / build`) is green. Roughly 337 lines of source and 656 of test.
+
 **Architecture as it stands.**
 
 ```
+src/
+├── cli.tsx     meow · resolveTarget() BEFORE render · exit codes 2/130/143/1
+│               · signal + uncaughtException handlers that unmount to restore
+│                 the terminal
+└── app.tsx     ONE FILE, on purpose (v1 §4). Contains:
+                  sanitizeName()      ADR-0005 chokepoint — <U+XXXX> escaping
+                  describeFsError()   errno → one sanitized line
+                  resolveTarget()     startup path validation (pure, exported)
+                  compareEntries()    dirs first, then case-insensitive name
+                  displayPath()       $HOME → ~
+                  App                 useState×4 + one readdir effect
+                                      + ONE useInput, gated { isActive }
+
+test/
+├── helpers/render.tsx   LOCAL harness, replaces ink-testing-library.
+│                        Configurable columns/rows/stdinIsTTY. Load-bearing.
+├── helpers/fixture.ts   absolute fixture paths, cwd-independent
+└── *.test.tsx           app · cursor · navigation · sanitize · target
+                         · lifecycle · errors
+
+  keypress → useInput(gated) → setState → render
+  cwd change → useEffect → readdir → try/catch → entries | error
+  every rendered string → sanitizeName() → <Text>
 ```
 
 **Load-bearing decisions carried out.**
 
+- **ADR-0001** pnpm; settings live in `pnpm-workspace.yaml` under `allowBuilds` (pnpm 11 renamed it
+  from `onlyBuiltDependencies` and ignores the `package.json` `pnpm` field entirely).
+- **ADR-0002** `typescript@6.0.3` pinned exactly — TS 7 disables typescript-eslint and with it the
+  zero-`any` floor.
+- **ADR-0003** Node ≥ 22, Ink 7.1.1. `00_PROJECT_INSPIRATION.md §4` is permanently stale; do not fix it.
+- **ADR-0005** read-only by construction, enforced by ESLint bans on mutating `node:fs`,
+  `child_process`, and all networking — in `src/` only; `test/` may mutate to build fixtures.
+- **Ink 7 supersedes two `AGENTS.md §8` instructions:** `useWindowSize()` exists (do not hand-roll a
+  resize hook — S2-02) and `render(node, { alternateScreen: true })` exists (do not emit raw
+  `\x1b[?1049h` — S2-15). Both verified against the installed `.d.ts`.
+- **`isRawModeSupported` cannot be trusted as a boolean.** It is `stdin.isTTY`, which Node sets to
+  `undefined` on non-TTY streams. `app.tsx` routes it through `unknown` and narrows. Removing that
+  round-trip reintroduces a shipped crash.
+- **`test/helpers/render.tsx` is not boilerplate.** `ink-testing-library@4` hardcodes `columns = 100`,
+  has no `rows`, and forces `isTTY = true` — it cannot express non-TTY tests or Stage 2's two-size
+  golden frames.
+
 **Known debt carried forward.**
 
+- `S2-*` — **no viewport windowing.** Every row renders. A 40,000-entry directory will hang the
+  terminal. Explicitly out of scope in v1 §3; it is a hard Stage 2 requirement.
+- `S3-04` — **no request sequencing.** Rapid key-mash can resolve `readdir` out of order, so the
+  listing may not match the header. Needs `AbortController` + a monotonic request id; do not patch it
+  in Stage 2, a partial fix reads as "handled" and stops anyone looking.
+- `S3-07` — `resolveTarget` uses `stat`, which follows symlinks. No cycle guard, no depth cap.
+- `S2-14` — the error state is one plain line with no colour and no retry. Colour is Stage 2.
+- `S3-18` — npm package name unresolved; `private: true` is the interlock (ADR-0004).
+- Cursor resets to index 0 on every navigation. Stage 2's name-anchored cursor (ADR-0006) replaces
+  this; ascending to the parent ideally lands on the directory you came from.
+
 **Read this doc only if:**
+
+- you want the rationale for `app.tsx` being one file, before refactoring it;
+- you need the full record of which Ink 7 API assumptions were verified against the installed types;
+- you are wondering why the spec grew tasks S1-15/16/17 after it froze (see §9).
+
+For the narrative version — design choices with their costs, the bugs and their causes, and what was
+gotten wrong — read [`docs/version/stage1.md`](version/stage1.md) instead. It is written for a human.
