@@ -1,0 +1,13 @@
+# pnpm 11 reads settings from here, NOT from the "pnpm" field in package.json
+# (that field is silently ignored with a warning). See ADR-0001.
+#
+# NOTE: pnpm 11 renamed this setting. pnpm 10 called it `onlyBuiltDependencies`
+# and took a list; pnpm 11 calls it `allowBuilds` and takes a map. ADR-0001 and
+# the Stage 3 spec were written against the pnpm 10 name — `allowBuilds` is correct here.
+#
+# Every entry below is a package permitted to execute arbitrary code at install
+# time. Adding one is a supply-chain decision — justify it in one line.
+allowBuilds:
+  # Transitive under tsup and vitest. Its install script links the platform
+  # binary shipped via the @esbuild/<platform> optional dependencies.
+  esbuild: true
