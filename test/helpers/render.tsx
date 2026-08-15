@@ -197,3 +197,21 @@ export const KEY = {
   enter: String.fromCharCode(0x0d),
   escape: ESC,
 } as const;
+
+/**
+ * Remove ANSI escape sequences so a frame is human-diffable.
+ *
+ * Golden frames are committed as plain text: a snapshot full of SGR codes is
+ * unreviewable, and reviewing every snapshot change by hand is the whole point
+ * (CLAUDE.md §5 — never bulk-accept `-u`). Colour is asserted separately by
+ * counting SGR sequences, which is a different question from layout.
+ *
+ * The pattern is built with fromCharCode so no literal ESC byte lands in source.
+ */
+const ANSI_PATTERN = new RegExp(`${String.fromCharCode(0x1b)}\\[[0-9;?]*[A-Za-z]`, 'g');
+
+export const stripAnsi = (text: string): string => text.replace(ANSI_PATTERN, '');
+
+/** How many SGR (colour/style) sequences a frame contains. */
+export const countSgr = (text: string): number =>
+  (text.match(new RegExp(`${String.fromCharCode(0x1b)}\\[[0-9;]*m`, 'g')) ?? []).length;

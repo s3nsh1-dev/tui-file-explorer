@@ -1,0 +1,20 @@
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│glim …ocal_Storage/development/WebDev/intentional-projects/tui-file-explorer/test/fixtures/preview│
+│❯ binary.bin                           28 B │ binary file · 28 B                                  │
+│  empty.txt                             0 B │                                                     │
+│  escape.txt                           65 B │                                                     │
+│  text.txt                             39 B │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│4 items  ·  sort name ↑                                                                           │
+│↑↓ move   ⏎ open   ← up   / filter   . hidden   s sort   ? help   q quit                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

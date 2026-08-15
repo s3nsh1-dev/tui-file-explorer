@@ -1,0 +1,20 @@
+╭────────────────────────────────────────────────╮
+│glim …ects/tui-file-explorer/test/fixtures/basic│
+│❯ docs/                                         │
+│  src/                                          │
+│  file with space.txt                       7 B │
+│  invoice<U+202E>gpj.txt                   13 B │
+│  package.json                             24 B │
+│  README.md                                63 B │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│6/7  ·  sort name ↑                             │
+│↑↓ move   ⏎ open   ← up   / filter   . hidden  …│
+╰────────────────────────────────────────────────╯

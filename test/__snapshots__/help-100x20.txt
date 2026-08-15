@@ -1,0 +1,20 @@
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│glim ~/Local_Storage/development/WebDev/intentional-projects/tui-file-explorer/test/fixtures/basic│
+│Keys                                                                                              │
+│                                                                                                  │
+│↑ ↓  k j    move the cursor                                                                       │
+│g  G        jump to first / last entry                                                            │
+│⏎ →  l      open the highlighted directory                                                        │
+│←  h        go to the parent directory                                                            │
+│/           filter — ⏎ keeps it, ⎋ cancels                                                        │
+│.           show or hide dotfiles                                                                 │
+│s  S        cycle sort key / reverse it                                                           │
+│?           close this help                                                                       │
+│q  Ctrl-C   quit                                                                                  │
+│                                                                                                  │
+│glim is read-only: it never deletes, renames or writes.                                           │
+│                                                                                                  │
+│                                                                                                  │
+│6/7  ·  sort name ↑                                                                               │
+│↑↓ move   ⏎ open   ← up   / filter   . hidden   s sort   ? help   q quit                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
