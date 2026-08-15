@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# ADR-0001 — pnpm is the package manager for this repo.
+# Any of these appearing here is a bug, not a preference.
+package-lock.json
+yarn.lock
+bun.lockb
