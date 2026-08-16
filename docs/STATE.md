@@ -7,29 +7,30 @@
 
 ---
 
-- **Stage:** 1 — **code complete, awaiting CHECKPOINT 1**
-- **Branch:** `stage-1`. `main` is human-only and frozen at `46153a1`; `develop` is the integration
-  branch — `AGENTS.md §5.1`
-- **Doc:** `docs/v1_STAGE_1.md` — spec **frozen** as of `47280b4` (S1-01), amended once by
-  maintainer instruction (see §9 Deviations)
-- **Last verified green:** 2026-08-16 — typecheck ✓ lint ✓ test ✓ (36 passed, 7 files) build ✓
-- **Last task completed:** S1-15 — `docs/version/stage1.md` retrospective written
-- **Next task:** **S1-16 — CHECKPOINT 1 · HUMAN GATE.** A human must run the binary in a real
-  terminal. I have no TTY and no eyes; this cannot be self-certified (`AGENTS.md §2`)
-- **Blocked on:** **HUMAN GATE — CHECKPOINT 1.** See `v1 §7 Human gates` for the five things to look
-  at. S1-17 (merge `stage-1` → `develop`) does not happen until it passes
-- **Open ADRs:** none proposed. ADR-0001 … ADR-0005 are **Accepted**
+- **Stage:** 2 — **code complete, awaiting CHECKPOINT 2**
+- **Branch:** `stage-2` (cut from `develop` at `9ba2bf1`). `main` is human-only and frozen at
+  `46153a1`; `develop` holds signed-off Stage 1 — `AGENTS.md §5.1`
+- **Doc:** `docs/v2_STAGE_2.md` — spec reconciled and **frozen** at `b142f99`
+- **Last verified green:** 2026-08-16 — typecheck ✓ lint ✓ test ✓ (136 passed, 15 files) build ✓
+- **Last task completed:** S2-18 — `docs/version/stage2.md` retrospective written
+- **Next task:** **S2-19 — CHECKPOINT 2 · HUMAN GATE.** Colour contrast, box-drawing glyphs, scroll
+  flicker and scrollback restoration all need human eyes (`AGENTS.md §2`)
+- **Blocked on:** **HUMAN GATE — CHECKPOINT 2.** See `v2 §7 Human gates`. S2-20 (merge `stage-2` →
+  `develop`) does not happen until it passes
+- **Open ADRs:** none proposed. ADR-0001 … ADR-0007 are **Accepted**
 - **Do not touch:** n/a
 
-### Stage 1 at a glance
+### Stage 2 at a glance
 
 | | |
 |---|---|
-| Commits on `stage-1` | 14 |
-| Tests | 36 passing, 7 files |
-| Source | 337 lines (`src/app.tsx`, `src/cli.tsx`) |
-| Bugs found and fixed | 4 — two of them only visible by running the built binary |
-| Retrospective | [`docs/version/stage1.md`](version/stage1.md) |
+| Commits on `stage-2` | 6 |
+| Tests | 136 passing, 15 files (up from 36) |
+| Golden frames | 9 committed `.txt`, each reviewed by hand |
+| Source | 1 483 lines, 16 modules (up from 337, 2 modules) |
+| Bugs found and fixed | 5 — three found by looking at rendered output, not by assertions |
+| Retrospective | [`docs/version/stage2.md`](version/stage2.md) |
+| Stage 3 refactor plan | [`stage2.md §7`](version/stage2.md) — for review at CHECKPOINT 2 |
 
 ### Decisions locked during planning (2026-08-15)
 
@@ -59,13 +60,17 @@ glim/
 ├── README.md
 ├── AGENTS.md · CLAUDE.md                    §5.1 three-tier branching
 ├── src/
-│   ├── cli.tsx               meow · validate-before-mount · exit codes
-│   └── app.tsx               ONE FILE by design (v1 §4)
+│   ├── cli.tsx               meow · validate-before-mount · alternateScreen
+│   ├── app.tsx               hooks + layout + JSX (still holds I/O until S3-02)
+│   ├── core/                 PURE — sanitize, errors
+│   ├── state/                PURE — reducer, actions, selectors
+│   └── ui/                   Frame List Row Preview StatusBar Help theme format
 ├── test/
-│   ├── helpers/render.tsx    LOCAL harness — replaces ink-testing-library
-│   ├── helpers/fixture.ts
+│   ├── helpers/render.tsx    LOCAL harness — pinned size, resize(), non-TTY stdin
 │   ├── fixtures/basic/       incl. a real U+202E filename
-│   └── 7 × *.test.tsx        36 tests
+│   ├── fixtures/preview/     incl. real NUL and ESC bytes in file CONTENT
+│   ├── __snapshots__/        9 golden frames
+│   └── 15 × *.test.ts(x)     136 tests
 └── docs/
     ├── 00_PROJECT_INSPIRATION.md   IMMUTABLE — partly stale, see ADRs
     ├── STATE.md              ← you are here
@@ -75,8 +80,9 @@ glim/
     ├── v3_STAGE_3.md         PROVISIONAL — reconcile + freeze at Stage 3 kickoff
     ├── version/
     │   ├── _TEMPLATE_RETROSPECTIVE.md
-    │   └── stage1.md         ✅ the Stage 1 story, for humans
-    └── adr/ADR-0001 … ADR-0005
+    │   ├── stage1.md         ✅ the Stage 1 story, for humans
+    │   └── stage2.md         ✅ the Stage 2 story + the Stage 3 refactor plan
+    └── adr/ADR-0001 … ADR-0007
 ```
 
 `dist/` is gitignored and built on demand. `pnpm build && node dist/cli.js ~` runs the app today.
@@ -112,7 +118,7 @@ Rules:
 | Stage | Doc | Branch | Started | Completed | Merged to `develop` | Retrospective | Signed off by |
 |---|---|---|---|---|---|---|---|
 | 1 — Walking Skeleton | `docs/v1_STAGE_1.md` | `stage-1` | 2026-08-15 | 2026-08-16 | 2026-08-16 | ✅ `docs/version/stage1.md` | Shubham Pandey |
-| 2 — Real Application | `docs/v2_STAGE_2.md` | `stage-2` | — | — | — | `docs/version/stage2.md` | — |
+| 2 — Real Application | `docs/v2_STAGE_2.md` | `stage-2` | 2026-08-16 | 2026-08-16 (pending gate) | — | ✅ `docs/version/stage2.md` | — |
 | 3 — Production | `docs/v3_STAGE_3.md` | `stage-3` | — | — | — | `docs/version/stage3.md` | — |
 
 Stage transitions are human-gated. An agent fills `Started`/`Completed`/`Merged`; **a human fills

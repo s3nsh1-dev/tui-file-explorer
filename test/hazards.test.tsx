@@ -98,6 +98,25 @@ describe('unreadable directories', () => {
   });
 });
 
+describe('quitting from an error state', () => {
+  it.skipIf(asRoot)('still exits on q when the directory is unreadable', async () => {
+    const denied = await mkdtemp(path.join(tmpdir(), 'glim-denied-quit-'));
+    await chmod(denied, 0o000);
+
+    try {
+      const { stdin, waitUntilExit } = render(<App cwd={denied} />, { columns: 80, rows: 12 });
+      await settle(150);
+
+      stdin.write('q');
+      // Resolves only if exit() ran. An error state must not trap the user.
+      await expect(waitUntilExit()).resolves.toBeUndefined();
+    } finally {
+      await chmod(denied, 0o755);
+      await rm(denied, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('terminal resize', () => {
   it('collapses the preview pane when the terminal narrows', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'glim-resize-'));

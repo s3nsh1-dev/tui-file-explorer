@@ -375,7 +375,44 @@ one commit per task ID with a `Verified:` line · merged to `develop` only after
 
 ## 8. Implementation log
 
-### YYYY-MM-DD
+### 2026-08-16 — S2-01 → S2-18
+
+- **S2-01, S2-03** — `state/` reducer, actions, selectors. Name-anchored cursor, derived `visible`
+  stored in state, pure `nextOffset`/`windowSlice`. Commit `f433c12`.
+  Verified: RED "Cannot find module '../src/state/reducer.js'" → GREEN 71 passed. 35 new tests, all
+  running with no renderer imported.
+- **S2-02, S2-05 … S2-08, S2-12 … S2-14** — the whole UI layer plus `core/sanitize.ts` and
+  `core/errors.ts`. Commit `b504789`.
+- **S2-04, S2-09 … S2-11, S2-15, S2-16** — golden frames, alternate screen, feature suite,
+  ADR-0006 and ADR-0007. Commit `0141f7e`.
+- **DoD completion** — FIFO refusal, resize, and the help-clipping fix. Commit `f4411e4`.
+- **S2-17, S2-18** — this log, the handoff, `docs/version/stage2.md`.
+
+- **Gate at close:** typecheck ✓ · lint ✓ · test ✓ **136 passed (15 files)** · build ✓.
+
+- **Surprise — a colour test that could not fail.** The frame-level assertion "colour is emitted by
+  default" is vacuous under vitest: chalk reads the real `process.stdout`, which is not a TTY, so no
+  SGR is emitted either way. Split into a `theme.ts` unit test plus a hand-run of the real binary.
+  That hand-run produced the stage's best result: `FORCE_COLOR=1` → 32 SGR sequences,
+  `NO_COLOR=1 FORCE_COLOR=1` → **0**. NO_COLOR beats FORCE_COLOR only because `theme.ts` empties the
+  tokens itself; chalk alone would have honoured FORCE_COLOR.
+
+- **Surprise — Ink overlaps overflowing rows instead of clipping them.** The help overlay in a
+  10-row terminal rendered `go to the parent directorytory` and turned `Keys` into ` eys`. `Help`
+  was the only fixed-height content inside a `flexGrow` box. It now slices itself to the rows it is
+  given. Found by a test failing for a reason I did not anticipate.
+
+- **Surprise — an empty `<Text>` has zero height.** Restoring the help spacers as `label: ''`
+  silently did nothing; `' '` works. Caught because the regenerated golden frame came back identical
+  to the *broken* version rather than the intended one.
+
+- **Surprise — `prettier --write` rewrote all 29 files.** No `.prettierrc.json` existed, and
+  prettier's defaults are double quotes at 80 columns, which is not the style this code was written
+  in. A 341-line noise diff, caught by reading it before committing.
+
+- **Two layout defects found by rendering, not by assertion:** text budgets measured against the
+  outer rather than inner width left the header a column short of the body, and the size column sat
+  flush against the pane divider. Both now covered by a cell-width invariant test at four sizes.
 
 ---
 
@@ -391,13 +428,77 @@ one commit per task ID with a `Verified:` line · merged to `develop` only after
 
 **State of the codebase.**
 
+`glim` is the program the inspiration doc describes. Two panes with a live preview, `/` filter,
+`s`/`S` sort cycling, `.` hidden-file toggle, `?` help, colour with `NO_COLOR` support, viewport
+windowing, per-pane loading and error states, and the alternate screen buffer. 136 tests across 15
+files; 9 committed golden frames; the four-command gate is green. 1 483 lines of source across 16
+modules, 1 900 lines of test.
+
 **Architecture as it stands.**
 
 ```
+src/
+├── cli.tsx              meow · resolveTarget BEFORE render · exit codes 2/130/143/1
+│                        · render(_, { alternateScreen: true })  [ADR-0007]
+├── app.tsx              hooks + layout arithmetic + JSX. STILL holds I/O:
+│                          readDirectory()   ← moves to core/fs.ts     at S3-02
+│                          resolveTarget()   ← moves to core/path.ts   at S3-02
+│                          displayPath()     ← moves to core/path.ts   at S3-02
+├── core/                PURE. No react, no ink. Lint-enforced from S3-03.
+│   ├── sanitize.ts      sanitizeName · displayWidth · truncateToWidth
+│   └── errors.ts        errnoOf · describeFsError
+├── state/               PURE. 21 tests run with no renderer at all.
+│   ├── reducer.ts       flat state · name-anchored cursor · recompute() [ADR-0006]
+│   ├── actions.ts       discriminated union
+│   └── selectors.ts     nextOffset (idempotent) · windowSlice
+└── ui/
+    ├── Frame · List · Row(memo) · Preview · StatusBar · Help · theme · format
+    └── hooks/usePreview.ts   bounded read + the lstat guard  ← reader moves at S3-02
+
+  keypress → ONE useInput (mode-gated) → dispatch → reducer → visible
+  visible  → nextOffset/windowSlice → <List> (only viewport rows ever mapped)
+  selection→ usePreview → lstat guard → ≤64KiB → NUL scan → sanitize → <Preview>
+  every untrusted string → sanitizeName() → <Text>
 ```
 
 **Load-bearing decisions carried out.**
 
+- **ADR-0006** — one reducer; cursor anchored by NAME; `visible` is derived state stored in the
+  reducer and `recompute()` is its only legal writer.
+- **ADR-0007** — the alternate screen is Ink's `alternateScreen: true`, not hand-written escapes, so
+  the restore path is tied to unmount across all four exit routes.
+- **The scroll offset is deliberately NOT in the reducer.** It is `useState` adjusted during render
+  via the pure, **idempotent** `nextOffset`. If that function ever stops being idempotent, this
+  becomes an infinite render loop rather than a subtle bug.
+- **`Help` must stay height-aware.** Ink overlays surplus rows instead of clipping them; any
+  fixed-height content added to the body box needs a `height` prop on day one.
+- **Golden frames are ANSI-stripped** and reviewed by hand. Colour is asserted separately by counting
+  SGR sequences.
+- **`displayWidth` is an approximation** of UAX #11 — common CJK and emoji ranges, no grapheme
+  clusters. Tested against CJK and emoji filenames; a flag emoji will still measure wrong.
+
 **Known debt carried forward.**
 
-**Read this doc only if:**
+- `S3-04` — **request sequencing.** The reducer drops results whose `dir` no longer matches, which
+  covers the common case; two navigations racing into the *same* directory are still unordered.
+  Needs `AbortController` + a monotonic request id. **Do not patch this partially** — a half fix
+  reads as "handled" and stops anyone looking.
+- `S3-09` — the 40 000-entry directory is *rendered* correctly but has never been **measured**. Every
+  entry is `lstat`ed on load in batches of 64 (`STAT_CONCURRENCY`), and that cost is unknown. If
+  perf work is needed, this is where it is.
+- `S3-07` — `usePreview` resolves exactly one symlink level (cannot loop); nothing guards a chain.
+  `resolveTarget` still uses `stat`, which follows links.
+- `S3-13` — every tuning constant is hardcoded and visible at the top of its module:
+  `SCROLL_MARGIN`, `PREVIEW_MIN_WIDTH`, `LIST_FRACTION`, `STAT_CONCURRENCY`, `MAX_PREVIEW_BYTES`.
+- `S3-02` — the `core/` ⟂ `ui/` split. **The full plan, move order and zero-diff verification
+  strategy are in [`docs/version/stage2.md §7`](version/stage2.md#the-stage-3-core--ui-split--plan-for-review-at-checkpoint-2)**,
+  written there so it could be reviewed at CHECKPOINT 2 instead of needing a third interruption.
+- `S3-18` — npm package name unresolved; `private: true` is the interlock (ADR-0004).
+
+**Read this doc only if:** you need the rationale for storing derived state in the reducer before
+changing it, or the record of which Ink 7 behaviours were established by experiment.
+
+For the narrative version — every judgement call argued, the four surprises, the five bugs with
+their guarding tests, and an honest account of what was gotten wrong — read
+[`docs/version/stage2.md`](version/stage2.md). Stage 2's review gate was waived, and that document
+is the substitute for it.
