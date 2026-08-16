@@ -1,4 +1,5 @@
 import type { Entry, Mode, SortKey, Status } from '../core/types.js';
+import { compareEntries, nextSortKey } from '../core/sort.js';
 import { clamp } from '../core/util.js';
 import type { Action } from './actions.js';
 
@@ -64,37 +65,6 @@ export const initialState = (dir: string): State => ({
   mode: 'normal',
 });
 
-const SORT_CYCLE: readonly SortKey[] = ['name', 'size', 'mtime', 'ext'];
-
-const byName = (a: Entry, b: Entry): number =>
-  a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-
-const extensionOf = (name: string): string => {
-  const dot = name.lastIndexOf('.');
-  // `> 0`, not `>= 0`: a leading dot makes a hidden file, not an extension.
-  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
-};
-
-/** Every comparator falls back to name, so sorting is total and stable-looking. */
-const COMPARATORS: Record<SortKey, (a: Entry, b: Entry) => number> = {
-  name: byName,
-  size: (a, b) => b.size - a.size || byName(a, b),
-  mtime: (a, b) => b.mtimeMs - a.mtimeMs || byName(a, b),
-  ext: (a, b) => extensionOf(a.name).localeCompare(extensionOf(b.name)) || byName(a, b),
-};
-
-const makeComparator =
-  (key: SortKey, reverse: boolean) =>
-  (a: Entry, b: Entry): number => {
-    // Directories first under every key and in both directions. Reversing the
-    // sort should reorder files, not scatter directories through them.
-    if (a.isDirectory !== b.isDirectory) {
-      return a.isDirectory ? -1 : 1;
-    }
-    const result = COMPARATORS[key](a, b);
-    return reverse ? -result : result;
-  };
-
 /**
  * Re-anchor the cursor after the visible list changed.
  * Keeps the requested name if it survived; otherwise falls back to the first
@@ -118,7 +88,7 @@ const recompute = (state: State, keepCursorOn: string | null): State => {
     return needle === '' || entry.name.toLowerCase().includes(needle);
   });
 
-  const visible = filtered.sort(makeComparator(state.sortKey, state.sortReverse));
+  const visible = filtered.sort(compareEntries(state.sortKey, state.sortReverse));
   return { ...state, visible, cursorName: anchor(visible, keepCursorOn) };
 };
 
@@ -194,11 +164,8 @@ export const reducer = (state: State, action: Action): State => {
     case 'TOGGLE_HIDDEN':
       return recompute({ ...state, showHidden: !state.showHidden }, state.cursorName);
 
-    case 'CYCLE_SORT': {
-      const position = SORT_CYCLE.indexOf(state.sortKey);
-      const next = SORT_CYCLE[(position + 1) % SORT_CYCLE.length] ?? 'name';
-      return recompute({ ...state, sortKey: next }, state.cursorName);
-    }
+    case 'CYCLE_SORT':
+      return recompute({ ...state, sortKey: nextSortKey(state.sortKey) }, state.cursorName);
 
     case 'REVERSE_SORT':
       return recompute({ ...state, sortReverse: !state.sortReverse }, state.cursorName);

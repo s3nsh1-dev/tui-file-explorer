@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -231,6 +231,75 @@ describe('help overlay in a short terminal', () => {
       .replace(/\n$/, '')
       .split('\n')) {
       expect(displayWidth(line), JSON.stringify(line)).toBe(60);
+    }
+  });
+});
+
+/**
+ * S3-10 / adversary A3. Circular symlinks.
+ *
+ * We write NO cycle-detection code, deliberately. The kernel already refuses:
+ * `stat` on a symlink loop rejects with ELOOP after its own depth limit
+ * (verified: a 40-link chain resolves, a 2-link cycle does not). `errors.ts`
+ * already maps ELOOP to a readable line. Hand-rolling a second depth cap would
+ * be redundant logic guarding a case that cannot reach it.
+ *
+ * These tests exist to prove that claim and to fail loudly if a future change
+ * starts following links manually.
+ */
+describe('symlink cycles', () => {
+  it('reports a circular symlink instead of descending forever', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'glim-loop-'));
+    try {
+      await symlink(path.join(dir, 'b'), path.join(dir, 'a'));
+      await symlink(path.join(dir, 'a'), path.join(dir, 'b'));
+
+      // If anything followed the chain by hand, this would not return.
+      const preview = await readPreview(path.join(dir, 'a'));
+
+      expect(preview.kind).toBe('error');
+      if (preview.kind === 'error') {
+        expect(preview.message).toMatch(/symbolic link/i);
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('still lists a directory containing a symlink cycle', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'glim-loop-ui-'));
+    try {
+      await symlink(path.join(dir, 'b'), path.join(dir, 'a'));
+      await symlink(path.join(dir, 'a'), path.join(dir, 'b'));
+      await writeFile(path.join(dir, 'real.txt'), 'fine\n');
+
+      const { lastFrame, settled } = render(<App cwd={dir} />, { columns: 100, rows: 12 });
+      await settled();
+
+      const frame = stripAnsi(lastFrame() ?? '');
+      // The loop must not take the listing down with it.
+      expect(frame).toContain('real.txt');
+      expect(frame).toContain('a');
+      expect(frame).toContain('b');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('shows a dangling symlink without failing the listing', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'glim-dangle-'));
+    try {
+      await symlink(path.join(dir, 'does-not-exist'), path.join(dir, 'broken'));
+      await writeFile(path.join(dir, 'real.txt'), 'fine\n');
+
+      const { lastFrame, settled } = render(<App cwd={dir} />, { columns: 100, rows: 12 });
+      await settled();
+
+      const frame = stripAnsi(lastFrame() ?? '');
+      expect(frame).toContain('broken');
+      expect(frame).toContain('real.txt');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
     }
   });
 });

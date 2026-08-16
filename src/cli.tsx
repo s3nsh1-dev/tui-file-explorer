@@ -2,8 +2,10 @@ import process from 'node:process';
 import { render } from 'ink';
 import meow from 'meow';
 import { App } from './app.js';
+import { readDirectory } from './core/fs.js';
 import { resolveTarget } from './core/path.js';
 import { sanitizeName } from './core/sanitize.js';
+import { sortEntries } from './core/sort.js';
 
 const HELP = `
   Usage
@@ -39,13 +41,31 @@ const cli = meow(HELP, {
 // over a terminal already switched into raw mode and the alternate screen.
 const target = await resolveTarget(cli.input.at(0) ?? process.cwd());
 
-if (target.ok) {
+if (target.ok && !process.stdout.isTTY) {
+  // ── Non-interactive: `glim | head`, `glim > out`, or a CI log ──
+  //
+  // Rendering a full-screen TUI into a pipe produces a box-drawing frame padded
+  // with trailing spaces — technically it "works", and it is useless to every
+  // tool that would consume it. A well-behaved Unix program notices it is not
+  // talking to a terminal and prints something a pipe can use.
+  //
+  // Sorted with the SAME comparator the interactive view uses, so piping a
+  // directory and looking at it show the same order. Names are sanitized:
+  // stdout being a pipe today does not mean it is not a terminal tomorrow.
+  const entries = await readDirectory(target.path);
+  const listing = sortEntries(entries, 'name')
+    .filter((entry) => !entry.name.startsWith('.'))
+    .map((entry) => sanitizeName(entry.name) + (entry.isDirectory ? '/' : ''))
+    .join('\n');
+
+  if (listing !== '') process.stdout.write(`${listing}\n`);
+} else if (target.ok) {
   const instance = render(<App cwd={target.path} />, {
     // Ink 7 manages the alternate screen buffer itself, including teardown.
     // AGENTS.md §8 says to write \x1b[?1049h by hand — that advice predates
     // this option, and hand-rolling it would mean owning the restore path on
     // every crash and signal route below. Ink ignores it when stdout is not a
-    // TTY, so `glim | head` is unaffected.
+    // TTY — though we now never reach here in that case, see the branch above.
     alternateScreen: true,
   });
 
