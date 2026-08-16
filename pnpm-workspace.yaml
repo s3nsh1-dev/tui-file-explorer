@@ -11,3 +11,9 @@ allowBuilds:
   # Transitive under tsup and vitest. Its install script links the platform
   # binary shipped via the @esbuild/<platform> optional dependencies.
   esbuild: true
+  # node-pty compiles a native addon through node-gyp (install + postinstall).
+  # Without this entry it installs UNBUILT and fails at import time with an
+  # error that looks like a missing binding rather than a missing approval —
+  # exactly the trap ADR-0001 predicted for this stage. Dev-only: it spawns a
+  # real pseudo-terminal for the L3 end-to-end tests and never ships.
+  node-pty: true
