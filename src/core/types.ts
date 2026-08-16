@@ -52,8 +52,7 @@ export type Status = 'loading' | 'ready' | 'error';
  * the renderer.
  */
 export type TargetResult =
-  | { readonly ok: true; readonly path: string }
-  | { readonly ok: false; readonly message: string };
+  { readonly ok: true; readonly path: string } | { readonly ok: false; readonly message: string };
 
 // ─────────────────────────── interaction ──────────────────────────
 

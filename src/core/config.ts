@@ -160,7 +160,14 @@ export const validateConfig = (parsed: unknown): ConfigResult => {
         0.9,
         warnings,
       ),
-      scrollMargin: readNumber(parsed, 'scrollMargin', DEFAULT_CONFIG.scrollMargin, 0, 20, warnings),
+      scrollMargin: readNumber(
+        parsed,
+        'scrollMargin',
+        DEFAULT_CONFIG.scrollMargin,
+        0,
+        20,
+        warnings,
+      ),
     },
     warnings,
   };
@@ -184,7 +191,10 @@ export const loadConfig = async (file: string = configPath()): Promise<ConfigRes
   }
 
   if (text.length > MAX_CONFIG_BYTES) {
-    return { config: DEFAULT_CONFIG, warnings: ['config file is implausibly large, using defaults'] };
+    return {
+      config: DEFAULT_CONFIG,
+      warnings: ['config file is implausibly large, using defaults'],
+    };
   }
 
   try {

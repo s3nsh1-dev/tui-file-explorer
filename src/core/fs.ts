@@ -21,7 +21,10 @@ import type { Entry } from './types.js';
 const STAT_CONCURRENCY = 64;
 
 /** Metadata for one entry, with every failure already turned into a value. */
-const describeEntry = async (dir: string, dirent: { name: string; isDirectory: () => boolean; isSymbolicLink: () => boolean }): Promise<Entry> => {
+const describeEntry = async (
+  dir: string,
+  dirent: { name: string; isDirectory: () => boolean; isSymbolicLink: () => boolean },
+): Promise<Entry> => {
   const full = path.join(dir, dirent.name);
   const isSymlink = dirent.isSymbolicLink();
   let isDirectory = dirent.isDirectory();

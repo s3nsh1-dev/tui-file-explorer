@@ -43,7 +43,11 @@ const readRegularFile = async (target: string, size: number): Promise<PreviewSta
       return { kind: 'binary', size };
     }
 
-    const lines = slice.toString('utf8').split(/\r?\n/).slice(0, MAX_PREVIEW_LINES).map(sanitizeName);
+    const lines = slice
+      .toString('utf8')
+      .split(/\r?\n/)
+      .slice(0, MAX_PREVIEW_LINES)
+      .map(sanitizeName);
     return { kind: 'text', lines, truncated: size > bytesRead };
   } finally {
     // `finally`, not after the return: a descriptor leaked on every preview is
