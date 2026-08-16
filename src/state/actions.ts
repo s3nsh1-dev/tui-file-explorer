@@ -8,14 +8,21 @@ import type { Entry, Mode } from '../core/types.js';
 export type Action =
   /** A navigation began. Clears entries so the UI can show a loading state. */
   | { readonly type: 'NAVIGATE'; readonly dir: string }
-  /** readdir resolved. `dir` is echoed so a stale result can be ignored. */
+  /**
+   * readdir resolved. Carries the `requestId` it was issued under, so a result
+   * that arrives after a newer navigation can be dropped.
+   *
+   * Echoing the directory is NOT sufficient: navigating a -> b -> a issues two
+   * reads of `a`, and if the first resolves last it overwrites the newer one
+   * with staler contents. Only a monotonic id distinguishes them.
+   */
   | {
       readonly type: 'LOADED';
-      readonly dir: string;
+      readonly requestId: number;
       readonly entries: readonly Entry[];
     }
   /** readdir rejected, with a message already sanitized by the caller. */
-  | { readonly type: 'FAILED'; readonly dir: string; readonly message: string }
+  | { readonly type: 'FAILED'; readonly requestId: number; readonly message: string }
   | { readonly type: 'MOVE'; readonly delta: number }
   | { readonly type: 'MOVE_TO'; readonly position: 'start' | 'end' }
   | { readonly type: 'TOGGLE_HIDDEN' }

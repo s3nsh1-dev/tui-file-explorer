@@ -29,6 +29,19 @@ export type State = {
     readonly filter: string;
     readonly cursorName: string | null;
   } | null;
+  /**
+   * Monotonic id of the in-flight directory read.
+   *
+   * Incremented on every navigation. `LOADED`/`FAILED` carry the id they were
+   * issued under and are DROPPED if it no longer matches — which is the only
+   * defence against a slow read finishing after a faster, newer one.
+   *
+   * Note there is no AbortController here, deliberately: `fs.promises.readdir`
+   * ignores an AbortSignal outright (verified — it resolves even when handed an
+   * already-aborted signal), so cancellation is not available and discarding
+   * the result is the whole mechanism.
+   */
+  readonly requestId: number;
   readonly sortKey: SortKey;
   readonly sortReverse: boolean;
   readonly showHidden: boolean;
@@ -44,6 +57,7 @@ export const initialState = (dir: string): State => ({
   cursorName: null,
   filter: '',
   filterBackup: null,
+  requestId: 0,
   sortKey: 'name',
   sortReverse: false,
   showHidden: false,
@@ -129,6 +143,7 @@ export const reducer = (state: State, action: Action): State => {
         {
           ...state,
           dir: action.dir,
+          requestId: state.requestId + 1,
           status: 'loading',
           error: undefined,
           entries: [],
@@ -141,9 +156,8 @@ export const reducer = (state: State, action: Action): State => {
       );
 
     case 'LOADED':
-      // A result for a directory we already left is stale. Dropping it here is
-      // a partial defence only — real request sequencing is S3-04.
-      if (action.dir !== state.dir) return state;
+      // Stale result from a superseded navigation. Dropped, not rendered.
+      if (action.requestId !== state.requestId) return state;
       return recompute(
         {
           ...state,
@@ -155,7 +169,7 @@ export const reducer = (state: State, action: Action): State => {
       );
 
     case 'FAILED':
-      if (action.dir !== state.dir) return state;
+      if (action.requestId !== state.requestId) return state;
       return recompute({ ...state, status: 'error', error: action.message, entries: [] }, null);
 
     case 'MOVE': {

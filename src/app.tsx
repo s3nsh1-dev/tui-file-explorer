@@ -53,7 +53,7 @@ export const App = ({ cwd }: AppProps) => {
   const canReadInput = rawModeFlag === true;
 
   const [state, dispatch] = useReducer(reducer, cwd, initialState);
-  const { dir, mode, visible } = state;
+  const { dir, mode, requestId, visible } = state;
 
   useEffect(() => {
     let cancelled = false;
@@ -61,14 +61,14 @@ export const App = ({ cwd }: AppProps) => {
     const load = async (): Promise<void> => {
       try {
         const entries = await readDirectory(dir);
-        if (!cancelled) dispatch({ type: 'LOADED', dir, entries });
+        if (!cancelled) dispatch({ type: 'LOADED', requestId, entries });
       } catch (error) {
         // AGENTS.md §7: handle or rethrow. An uncaught rejection here kills the
         // process with the terminal still in raw mode.
         if (!cancelled)
           dispatch({
             type: 'FAILED',
-            dir,
+            requestId,
             message: describeFsError(error, dir),
           });
       }
@@ -78,7 +78,9 @@ export const App = ({ cwd }: AppProps) => {
     return () => {
       cancelled = true;
     };
-  }, [dir]);
+    // requestId, not just dir: navigating a -> b -> a must issue a NEW read of
+    // `a` rather than reusing the effect, or the two reads of `a` race.
+  }, [dir, requestId]);
 
   const selected = selectedEntry(state);
   const preview = usePreview(selected === undefined ? null : childOf(dir, selected.name));

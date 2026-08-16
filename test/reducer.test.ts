@@ -20,7 +20,7 @@ const SAMPLE: readonly Entry[] = [
 ];
 
 const loaded = (entries: readonly Entry[] = SAMPLE) =>
-  reducer(initialState('/tmp'), { type: 'LOADED', dir: '/tmp', entries });
+  reducer(initialState('/tmp'), { type: 'LOADED', requestId: 0, entries });
 
 describe('loading', () => {
   it('starts empty and loading', () => {
@@ -42,9 +42,10 @@ describe('loading', () => {
 
   it('ignores a result for a directory we already navigated away from', () => {
     const state = reducer(loaded(), { type: 'NAVIGATE', dir: '/other' });
+    // The result was issued under requestId 0; NAVIGATE moved us to 1.
     const stale = reducer(state, {
       type: 'LOADED',
-      dir: '/tmp',
+      requestId: 0,
       entries: SAMPLE,
     });
     expect(stale.status).toBe('loading');
@@ -54,7 +55,7 @@ describe('loading', () => {
   it('records a failure without losing the directory', () => {
     const state = reducer(loaded(), {
       type: 'FAILED',
-      dir: '/tmp',
+      requestId: 0,
       message: 'permission denied',
     });
     expect(state.status).toBe('error');
@@ -89,7 +90,7 @@ describe('cursor', () => {
   it('reports index -1 and no selection for an empty listing', () => {
     const state = reducer(initialState('/tmp'), {
       type: 'LOADED',
-      dir: '/tmp',
+      requestId: 0,
       entries: [],
     });
     expect(cursorIndex(state)).toBe(-1);
@@ -233,5 +234,71 @@ describe('preferences survive navigation', () => {
     state = reducer(state, { type: 'NAVIGATE', dir: '/tmp/docs' });
     expect(state.sortKey).toBe('size');
     expect(state.showHidden).toBe(true);
+  });
+});
+
+/**
+ * S3-08. The race Stage 2 refused to half-fix.
+ *
+ * Echoing the directory back is not enough: navigating a → b → a issues two
+ * reads of `a`, and if the slower one resolves last it overwrites the newer
+ * result with staler contents while the header still says `a`. Only a
+ * monotonic id can tell those two reads apart.
+ */
+describe('request sequencing', () => {
+  it('increments the request id on every navigation', () => {
+    let state = initialState('/a');
+    expect(state.requestId).toBe(0);
+    state = reducer(state, { type: 'NAVIGATE', dir: '/b' });
+    expect(state.requestId).toBe(1);
+    state = reducer(state, { type: 'NAVIGATE', dir: '/a' });
+    expect(state.requestId).toBe(2);
+  });
+
+  it('drops a result that a newer navigation superseded', () => {
+    let state = reducer(initialState('/a'), { type: 'NAVIGATE', dir: '/b' });
+    state = reducer(state, {
+      type: 'LOADED',
+      requestId: 0,
+      entries: [entry('stale')],
+    });
+
+    expect(state.status).toBe('loading');
+    expect(state.visible).toHaveLength(0);
+  });
+
+  it('drops a slow read of the SAME directory the user returned to', () => {
+    // a → b → a. Both reads of `a` would echo the same dir; only ids differ.
+    let state = initialState('/a');
+    state = reducer(state, { type: 'NAVIGATE', dir: '/b' }); // id 1
+    state = reducer(state, { type: 'NAVIGATE', dir: '/a' }); // id 2
+
+    // The id-1 read finishes last. Without the id this would render /b's
+    // contents under a header reading /a.
+    state = reducer(state, {
+      type: 'LOADED',
+      requestId: 1,
+      entries: [entry('from-b')],
+    });
+    expect(state.status).toBe('loading');
+
+    state = reducer(state, {
+      type: 'LOADED',
+      requestId: 2,
+      entries: [entry('from-a')],
+    });
+    expect(state.visible.map((e) => e.name)).toEqual(['from-a']);
+  });
+
+  it('drops a stale FAILED as well as a stale LOADED', () => {
+    let state = reducer(initialState('/a'), { type: 'NAVIGATE', dir: '/b' });
+    state = reducer(state, {
+      type: 'FAILED',
+      requestId: 0,
+      message: 'permission denied',
+    });
+
+    expect(state.status).toBe('loading');
+    expect(state.error).toBeUndefined();
   });
 });
