@@ -323,7 +323,7 @@ export const App = ({ cwd }: AppProps) => {
       }
       body={
         mode === 'help' ? (
-          <Help width={innerWidth} />
+          <Help width={innerWidth} height={bodyHeight} />
         ) : (
           <>
             <Box flexDirection="column" width={listWidth}>

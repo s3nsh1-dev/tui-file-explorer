@@ -26,12 +26,21 @@ class FakeStdout extends EventEmitter {
   readonly frames: string[] = [];
   #lastFrame: string | undefined;
 
+  // Mutable, not readonly: Ink's useWindowSize reads these on every 'resize'
+  // event, so simulating a terminal resize means changing them and emitting.
   constructor(
-    readonly columns: number,
-    readonly rows: number,
+    public columns: number,
+    public rows: number,
   ) {
     super();
   }
+
+  /** Simulate the user dragging the terminal edge. */
+  readonly resize = (columns: number, rows: number): void => {
+    this.columns = columns;
+    this.rows = rows;
+    this.emit('resize');
+  };
 
   readonly write = (frame: string): void => {
     this.frames.push(frame);
@@ -117,6 +126,8 @@ export type RenderResult = {
   readonly stdin: FakeStdin;
   readonly stdout: FakeStdout;
   readonly stderr: FakeStderr;
+  /** Change the terminal size and fire Ink's resize handling. */
+  readonly resize: (columns: number, rows: number) => void;
   readonly rerender: (tree: ReactElement) => void;
   readonly unmount: () => void;
   readonly cleanup: () => void;
@@ -155,6 +166,7 @@ export const render = (tree: ReactElement, options: RenderOptions = {}): RenderR
     stdin,
     stdout,
     stderr,
+    resize: stdout.resize,
     rerender: instance.rerender,
     unmount: instance.unmount,
     cleanup: instance.cleanup,
