@@ -108,6 +108,15 @@ AGENTS.md                       this file
 CLAUDE.md                       Claude Code specifics
 ```
 
+> ⚠ **`docs/` is gitignored as of 2026-08-16**, by the maintainer's decision not to publish it.
+> Nothing about the read order, the stage docs, the ADRs or the retrospectives changes — they are
+> still the operating contract and still required reading. They are simply no longer
+> version-controlled, and a fresh `git clone` will not contain them.
+>
+> **If `docs/STATE.md` is missing, you are on a clone, not at the start of the project.**
+> `AGENTS.md §1`'s stop condition ("if `docs/STATE.md` does not exist, the project has not been
+> initialised") no longer distinguishes those two cases on its own. Do not scaffold. Ask.
+
 **Three doc types, three different jobs.** Do not merge them:
 
 | File | Written | Audience | Answers |

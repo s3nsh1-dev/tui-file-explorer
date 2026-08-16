@@ -68,6 +68,18 @@ pids/
 Thumbs.db
 Desktop.ini
 
+# ───────────────────────── documentation ────────────────────────
+# Maintainer's decision, 2026-08-16: the docs are not published.
+#
+# They remain ON DISK and are still the operating contract — AGENTS.md's read
+# order, the stage docs, the ADRs and the retrospectives are all unchanged and
+# all still required reading. They are simply not version-controlled from here.
+#
+# CONSEQUENCE for a future session: a fresh `git clone` of this repo will NOT
+# contain docs/. If docs/STATE.md is missing, you are on a clone, not at the
+# start of the project — do not "re-initialise" anything. Ask.
+docs/
+
 # ───────────────────────── misc ─────────────────────────────────
 .cache/
 tmp/
