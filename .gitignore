@@ -69,16 +69,17 @@ Thumbs.db
 Desktop.ini
 
 # ───────────────────────── documentation ────────────────────────
-# Maintainer's decision, 2026-08-16: the docs are not published.
+# docs/ is DELIBERATELY NOT IGNORED. Do not re-add it here.
 #
-# They remain ON DISK and are still the operating contract — AGENTS.md's read
-# order, the stage docs, the ADRs and the retrospectives are all unchanged and
-# all still required reading. They are simply not version-controlled from here.
+# It was ignored on 2026-08-16 and that cost us 16 files: while another branch
+# still tracked docs/, moving across the untracking commit deleted them from the
+# working tree. Git was correct — tracked at source, absent at target — and had
+# no idea the files mattered. Everything was recovered, and the directory was
+# put back under version control so it cannot happen again.
 #
-# CONSEQUENCE for a future session: a fresh `git clone` of this repo will NOT
-# contain docs/. If docs/STATE.md is missing, you are on a clone, not at the
-# start of the project — do not "re-initialise" anything. Ask.
-docs/
+# Full write-up: docs/INCIDENT-2026-08-16-docs-loss.md
+# If you want the docs off a public remote, move them OUT of this repository
+# rather than ignoring them in place.
 
 # ───────────────────────── misc ─────────────────────────────────
 .cache/
