@@ -16,8 +16,8 @@
 |---|---|
 | **Branch** | `stage-2` |
 | **Cut from `develop`** | 2026-08-16 (at `9ba2bf1`) |
-| **Merged to `develop`** | _pending — S2-20, after sign-off_ |
-| **Signed off by** | _pending — CHECKPOINT 2 (S2-19)_ |
+| **Merged to `develop`** | 2026-08-16 |
+| **Signed off by** | Shubham Pandey — CHECKPOINT 2 passed 2026-08-16 ("everything looks fine") |
 | **Commits** | 5 |
 | **Tests at close** | 136 passing, 15 files (up from 36) |
 | **Golden frames** | 9 committed `.txt` |
