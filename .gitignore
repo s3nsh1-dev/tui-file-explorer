@@ -69,18 +69,22 @@ Thumbs.db
 Desktop.ini
 
 # ───────────────────────── documentation ────────────────────────
-# docs/ is DELIBERATELY NOT IGNORED. Do not re-add it here.
+# docs/ is DELIBERATELY NOT IGNORED. It is the public documentation for this
+# project and it ships with the repository. Do not re-add it here.
 #
-# It was ignored on 2026-08-16 and that cost us 16 files: while another branch
-# still tracked docs/, moving across the untracking commit deleted them from the
-# working tree. Git was correct — tracked at source, absent at target — and had
-# no idea the files mattered. Everything was recovered, and the directory was
-# put back under version control so it cannot happen again.
+# Ignoring it has been tried twice and cost us both times. The second time is
+# the instructive one: a bare `docs/` pattern is UNANCHORED, so it matches every
+# directory named docs at any depth — including test/fixtures/basic/docs/, which
+# is a test fixture, not documentation. Untracking it turned CI red on a fresh
+# checkout while the working tree still looked fine locally.
 #
-# Full write-up: docs/INCIDENT-2026-08-16-docs-loss.md
-# If you want the docs off a public remote, move them OUT of this repository
-# rather than ignoring them in place.
-docs/
+# If you want documentation off a public remote, move it OUT of this repository
+# rather than ignoring it in place.
+
+# The private learning journal. The LEADING SLASH is load-bearing: it anchors
+# the pattern to the repository root, so this can never swallow a nested
+# test/fixtures/**/report/ the way `docs/` swallowed the fixture above.
+/report/
 # ───────────────────────── misc ─────────────────────────────────
 .cache/
 tmp/

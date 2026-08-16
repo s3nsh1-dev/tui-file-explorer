@@ -96,14 +96,16 @@ jobs:
 
       - name: Inspect the publishable tarball
         # Packaging is verified by listing what would ship, not by reading the
-        # config and assuming. src/, test/ and docs/ must never be in there.
+        # config and assuming. src/, test/ and docs/ must never be in there —
+        # and report/ least of all: it is the maintainer's private journal, so
+        # shipping it would be an irreversible disclosure, not just clutter.
         run: |
           pnpm build
           pnpm pack --pack-destination /tmp >/dev/null
           TARBALL=$(ls /tmp/*.tgz | head -1)
           echo "── contents ──"
           tar -tzf "$TARBALL"
-          if tar -tzf "$TARBALL" | grep -qE 'package/(src|test|docs)/'; then
-            echo "::error::Tarball contains source, tests or docs."
+          if tar -tzf "$TARBALL" | grep -qE 'package/(src|test|docs|report)/'; then
+            echo "::error::Tarball contains source, tests, docs or the private report/ tree."
             exit 1
           fi
