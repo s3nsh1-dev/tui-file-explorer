@@ -118,9 +118,9 @@ describe('NO_COLOR', () => {
    *
    * The split is therefore: `test/theme.test.ts` proves OUR gate empties every
    * token; the assertion below proves no SGR reaches the frame; and the real
-   * binary is checked by hand (recorded in docs/version/stage2.md §8), where
-   * FORCE_COLOR=1 yields 32 SGR sequences and NO_COLOR=1 yields 0 — even with
-   * FORCE_COLOR also set, which chalk alone would have honoured.
+   * binary is checked by hand, out of band, where FORCE_COLOR=1 yields 32 SGR
+   * sequences and NO_COLOR=1 yields 0 — even with FORCE_COLOR also set, which
+   * chalk alone would have honoured.
    */
   it('emits ZERO SGR sequences when NO_COLOR is set', async () => {
     vi.stubEnv('NO_COLOR', '1');

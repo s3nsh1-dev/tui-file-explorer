@@ -4,26 +4,26 @@
 > Tool-specific instructions live in `CLAUDE.md` (Claude Code), `.cursorrules`, etc. Those files
 > extend this one; they never contradict it. **If they conflict, this file wins.**
 >
-> *(Filename note: `AGENTS.md` — plural — is the cross-tool convention read by Cursor, Codex, Jules,
-> Aider and others. Rename to `AGENT.md` if you prefer, but you lose free auto-discovery.)*
+> _(Filename note: `AGENTS.md` — plural — is the cross-tool convention read by Cursor, Codex, Jules,
+> Aider and others. Rename to `AGENT.md` if you prefer, but you lose free auto-discovery.)_
 
 ---
 
 ## 1. Read order — every session, no exceptions
 
 ```
-   1. docs/STATE.md              ← where are we RIGHT NOW (30 seconds)
+   1. report/process/STATE.md              ← where are we RIGHT NOW (30 seconds)
    2. AGENTS.md                  ← this file (you are here)
-   3. docs/v{N}_STAGE_{N}.md     ← current stage only, incl. its Entry Point
+   3. report/process/v{N}_STAGE_{N}.md     ← current stage only, incl. its Entry Point
    4. docs/adr/                  ← skim titles; read any ADR the stage doc references
-   5. docs/00_PROJECT_INSPIRATION.md   ← only if unclear WHY, or on first ever session
+   5. report/process/00_PROJECT_INSPIRATION.md   ← only if unclear WHY, or on first ever session
 ```
 
 You do **not** read earlier stage docs by default. Stage docs are written so that `§0 Entry Point`
 gives you everything you need from prior stages. If the Entry Point is insufficient, that is a bug in
 the doc — fix the doc, then continue.
 
-**Stop condition:** if `docs/STATE.md` does not exist, the project has not been initialised. Do not
+**Stop condition:** if `report/process/STATE.md` does not exist, the project has not been initialised. Do not
 scaffold. Ask.
 
 ---
@@ -50,12 +50,12 @@ Permitted replacements — each backed by evidence:
 
 ### Evidence levels
 
-| Level | Tool | Use for | From |
-|---|---|---|---|
-| L1 | `ink-testing-library` → `lastFrame()` assertions | "is this content on screen" | Stage 1 |
-| L2 | Golden frame snapshots (committed `.txt`) | "did layout change unintentionally" | Stage 2 |
-| L3 | `node-pty` + `strip-ansi` | "does the real binary behave" | Stage 3 |
-| L4 | **HUMAN GATE** — halt and ask | aesthetics, fonts, feel | always |
+| Level | Tool                                             | Use for                             | From    |
+| ----- | ------------------------------------------------ | ----------------------------------- | ------- |
+| L1    | `ink-testing-library` → `lastFrame()` assertions | "is this content on screen"         | Stage 1 |
+| L2    | Golden frame snapshots (committed `.txt`)        | "did layout change unintentionally" | Stage 2 |
+| L3    | `node-pty` + `strip-ansi`                        | "does the real binary behave"       | Stage 3 |
+| L4    | **HUMAN GATE** — halt and ask                    | aesthetics, fonts, feel             | always  |
 
 A `HUMAN GATE` is a **hard stop**. Print what you need looked at and end your turn. Do not
 self-certify. Do not continue to the next task "while waiting."
@@ -76,11 +76,11 @@ say so** with the specific dependency chain. Do not decide unilaterally.
 
 ### Refactoring permission by stage
 
-| Stage | Refactor permitted? |
-|---|---|
-| 1 | Almost never. Duplication is fine. Wrong abstractions are not. |
-| 2 | Only when a feature cannot be built cleanly otherwise. State the blocking reason in the log. |
-| 3 | Yes — this is the sanctioned `core/` ⟂ `ui/` separation. Behaviour must not change. |
+| Stage | Refactor permitted?                                                                          |
+| ----- | -------------------------------------------------------------------------------------------- |
+| 1     | Almost never. Duplication is fine. Wrong abstractions are not.                               |
+| 2     | Only when a feature cannot be built cleanly otherwise. State the blocking reason in the log. |
+| 3     | Yes — this is the sanctioned `core/` ⟂ `ui/` separation. Behaviour must not change.          |
 
 ---
 
@@ -88,42 +88,67 @@ say so** with the specific dependency chain. Do not decide unilaterally.
 
 ### 4.1 File map
 
+**Two trees, two audiences.** `docs/` is public and ships with the repository; `report/` is the
+maintainer's private working record and is gitignored. Which one a file belongs in is decided by
+_who reads it_, not by what it is about.
+
 ```
-docs/
-├── 00_PROJECT_INSPIRATION.md   IMMUTABLE   why + stack + stage model + agent mentality
-├── STATE.md                    MUTABLE     read first, write last, every session
-├── _TEMPLATE_STAGE.md          IMMUTABLE   copy this to start a stage
-├── v1_STAGE_1.md               spec frozen at kickoff · log appended during
-├── v2_STAGE_2.md               "
-├── v3_STAGE_3.md               "
-├── version/                    the human-readable history — see §4.6
+docs/                           TRACKED — the project's public documentation
+├── README.md                   index of this directory
+├── ARCHITECTURE.md             layers, modules, data flow, load-bearing invariants
+├── CONTRIBUTING.md             setup, the gate, testing conventions, what is out of scope
+├── DISTRIBUTION.md             packaging and what publishing would take
+└── adr/
+    ├── README.md               index + the ADR conventions
+    ├── ADR-0001-<slug>.md      one decision, never edited (supersede instead)
+    └── ...
+
+report/                         GITIGNORED — the maintainer's learning journal
+├── README.md                   index of this directory
+├── FOR_THE_MAINTAINER.md       end-of-project briefing
+├── process/
+│   ├── 00_PROJECT_INSPIRATION.md   IMMUTABLE   why + stack + stage model + agent mentality
+│   ├── STATE.md                    MUTABLE     read first, write last, every session
+│   ├── _TEMPLATE_STAGE.md          IMMUTABLE   copy this to start a stage
+│   ├── v1_STAGE_1.md               spec frozen at kickoff · log appended during
+│   ├── v2_STAGE_2.md               "
+│   └── v3_STAGE_3.md               "
+├── retrospectives/             the human-readable history — see §4.6
 │   ├── _TEMPLATE_RETROSPECTIVE.md   IMMUTABLE   copy this to close a stage
 │   ├── stage1.md               IMMUTABLE once written
 │   ├── stage2.md               "
 │   └── stage3.md               "
-└── adr/
-    ├── ADR-0001-<slug>.md      one decision, never edited (supersede instead)
-    └── ...
+├── incidents/                  post-mortems
+└── CI_CD_github_errors/        raw CI failure output
+
 AGENTS.md                       this file
 CLAUDE.md                       Claude Code specifics
 ```
 
-> ⚠ **`docs/` is gitignored as of 2026-08-16**, by the maintainer's decision not to publish it.
-> Nothing about the read order, the stage docs, the ADRs or the retrospectives changes — they are
-> still the operating contract and still required reading. They are simply no longer
-> version-controlled, and a fresh `git clone` will not contain them.
+> ⚠ **`report/` is gitignored; `docs/` is tracked.** The process documents — STATE, the stage docs,
+> the retrospectives — are still the operating contract and still required reading. They are simply
+> not version-controlled, so a fresh `git clone` will not contain them.
 >
-> **If `docs/STATE.md` is missing, you are on a clone, not at the start of the project.**
-> `AGENTS.md §1`'s stop condition ("if `docs/STATE.md` does not exist, the project has not been
-> initialised") no longer distinguishes those two cases on its own. Do not scaffold. Ask.
+> **If `report/process/STATE.md` is missing, you are on a clone, not at the start of the project.**
+> §1's stop condition ("if `report/process/STATE.md` does not exist, the project has not been
+> initialised") does not distinguish those two cases on its own. Do not scaffold. Ask.
+>
+> **Writing a doc? Decide the tree first.** Would someone who just found this repository need it?
+> Then `docs/`, written for them — no session logs, no "what I learned", no stage numbers. Is it a
+> record of how the work went? Then `report/`. A topic that serves both gets two documents, not one
+> shared document with two voices.
+>
+> **Never reference a `report/` path from tracked code, tests, or `docs/`.** Those readers do not
+> have the file. Quote what you need inline instead.
 
 **Three doc types, three different jobs.** Do not merge them:
 
-| File | Written | Audience | Answers |
-|---|---|---|---|
-| `v{N}_STAGE_{N}.md` | before + during | agents | "what am I building, and what happened" |
-| `adr/ADR-000N.md` | at the moment of decision | agents | "why is it this way, so nobody re-litigates" |
-| `version/stage{N}.md` | at stage close | **humans, reading later** | "what is the story of this stage" |
+| File                                | Written                         | Audience                          | Answers                                      |
+| ----------------------------------- | ------------------------------- | --------------------------------- | -------------------------------------------- |
+| `report/process/v{N}_STAGE_{N}.md`  | before + during                 | agents                            | "what am I building, and what happened"      |
+| `docs/adr/ADR-000N.md`              | at the moment of decision       | agents + contributors             | "why is it this way, so nobody re-litigates" |
+| `report/retrospectives/stage{N}.md` | at stage close                  | **the maintainer, reading later** | "what is the story of this stage"            |
+| `docs/*.md`                         | when the public surface changes | **anyone who found the repo**     | "how do I use, understand or change this"    |
 
 ### 4.2 The BUILD LINE
 
@@ -134,8 +159,8 @@ Every stage doc contains this literal marker:
 ```
 
 - **Above it:** the frozen spec — intent, scope in/out, approach, architecture, task list, DoD.
-  Written *before* any code. **Never edited after the first commit of that stage.** If the spec turns
-  out wrong, you do not rewrite it — you record the divergence below the line under *Deviations*.
+  Written _before_ any code. **Never edited after the first commit of that stage.** If the spec turns
+  out wrong, you do not rewrite it — you record the divergence below the line under _Deviations_.
 - **Below it:** append-only log. Dated entries, what you did, what surprised you, what you had to
   change. Never delete, never reword history.
 
@@ -159,7 +184,7 @@ Read v{N-1} only if: <specific conditions, e.g. "you need the rationale for the 
 
 `v1` has no Entry Point — it starts from nothing.
 
-**This section is written by the agent finishing the *previous* stage**, as its last act, in the
+**This section is written by the agent finishing the _previous_ stage**, as its last act, in the
 previous doc's `## Handoff` section — then copied forward. The agent that just did the work is the
 one who knows what the next agent needs.
 
@@ -176,24 +201,28 @@ Format — keep it under one screen:
 ```markdown
 # ADR-0007: Use a flat reducer for navigation state
 
-- **Status:** Accepted  (Proposed | Accepted | Superseded by ADR-00NN)
+- **Status:** Accepted (Proposed | Accepted | Superseded by ADR-00NN)
 - **Date:** 2026-08-14
 - **Stage:** 2
 
 ## Context
+
 Three independent `useState`s (cursor, filter, sort) desynced when filtering changed the
 list length — cursor pointed past the end of the filtered array.
 
 ## Decision
+
 Single `useReducer` over `{ entries, cursorIndex, filter, sortKey }`, with cursor clamping
 applied inside the reducer.
 
 ## Consequences
-+ Cursor can never point out of bounds; invariant enforced in one place.
-+ Reducer is pure → unit-testable without rendering.
-− Every state read now goes through one object; more verbose call sites.
+
+- Cursor can never point out of bounds; invariant enforced in one place.
+- Reducer is pure → unit-testable without rendering.
+  − Every state read now goes through one object; more verbose call sites.
 
 ## Rejected alternatives
+
 - `useEffect` to re-clamp the cursor: introduces a render-then-correct flash.
 - Zustand/Jotai: unjustified dependency for one component tree.
 ```
@@ -201,7 +230,7 @@ applied inside the reducer.
 Never edit an accepted ADR. Write a new one with `Supersedes: ADR-0007` and update the old one's
 status line only.
 
-### 4.5 `docs/STATE.md`
+### 4.5 `report/process/STATE.md`
 
 The single answer to "where are we". Rewritten at the end of every session:
 
@@ -209,7 +238,7 @@ The single answer to "where are we". Rewritten at the end of every session:
 # STATE
 
 - **Stage:** 2 (in progress)
-- **Doc:** docs/v2_STAGE_2.md
+- **Doc:** report/process/v2_STAGE_2.md
 - **Last verified green:** 2026-08-14 — typecheck ✓ lint ✓ test ✓ (34) build ✓
 - **Last task completed:** S2-07 viewport windowing
 - **Next task:** S2-08 status bar
@@ -221,16 +250,16 @@ The single answer to "where are we". Rewritten at the end of every session:
 If you end a session without updating this file, the next agent starts blind. This is the most
 common way agent-built projects rot.
 
-### 4.6 `docs/version/stage{N}.md` — the retrospective
+### 4.6 `report/retrospectives/stage{N}.md` — the retrospective
 
-Written **once, at stage close**, from `docs/version/_TEMPLATE_RETROSPECTIVE.md`. **IMMUTABLE
-afterwards.** If a later stage proves it wrong, the correction goes in *that* stage's retrospective.
+Written **once, at stage close**, from `report/retrospectives/_TEMPLATE_RETROSPECTIVE.md`. **IMMUTABLE
+afterwards.** If a later stage proves it wrong, the correction goes in _that_ stage's retrospective.
 
 This is not a summary of the stage doc. The stage doc is a contract with a log attached; this is
 **the story, for a human reading all three in order, months later.** It carries what `git log` cannot:
 
 - **Design choices and what they cost** — one per decision a reasonable person could have made
-  differently, with the alternative stated fairly. If you cannot name what a choice made *harder*,
+  differently, with the alternative stated fairly. If you cannot name what a choice made _harder_,
   you have not understood it yet.
 - **Surprises** — what you believed at kickoff that turned out false, and the command or failing test
   that tipped you off.
@@ -277,7 +306,7 @@ justifies an agent writing to `main`.
 - **All stage work lands on that branch**, one commit per task ID.
 - **Merge `stage-{N}` → `develop` only after the stage's `HUMAN GATE` passes.** The merge is part of
   the stage completion ritual (`§10`), not something you do because the tests went green.
-- **Governance docs** — `AGENTS.md`, `CLAUDE.md`, `_TEMPLATE_*`, `docs/version/`, `.gitignore` — go
+- **Governance docs** — `AGENTS.md`, `CLAUDE.md`, `_TEMPLATE_*`, `report/retrospectives/`, `.gitignore` — go
   to `develop` directly, since they are not stage output. Then merge `develop` into the live stage
   branch so it inherits them.
 - If you find yourself on `main` for any reason, **stop and switch** before doing anything else.
@@ -289,7 +318,7 @@ justifies an agent writing to `main`.
 ### 5.2 Tasks and commits
 
 Tasks are IDs: `S{stage}-{nn}`, e.g. `S1-03`, `S2-11`. They come from the stage doc's task list.
-Never invent a task outside the list — propose it, get it added above the BUILD LINE *before* the
+Never invent a task outside the list — propose it, get it added above the BUILD LINE _before_ the
 stage starts, or defer it.
 
 Commit format:
@@ -319,7 +348,7 @@ pnpm build       # tsup
 ```
 
 > **pnpm, not npm** — see `docs/adr/ADR-0001`. `pnpm-lock.yaml` is committed; a `package-lock.json`
-> appearing in this repo is a bug. `npm view <pkg> version` is still the way to *query* the registry.
+> appearing in this repo is a bug. `npm view <pkg> version` is still the way to _query_ the registry.
 
 All four green, or the task is not done. Do not:
 
@@ -350,17 +379,17 @@ If the gate cannot pass, stop and report which command fails with the actual out
 
 Things that are free in a browser and expensive here. Know these before writing components.
 
-| Hazard | Reality | What to do |
-|---|---|---|
-| Rendering long lists | Ink re-diffs and rewrites terminal lines. 40k rows = frozen terminal. | Slice to viewport height before mapping. Stage 2 requirement. |
-| Unmemoized children | Every parent state change re-renders the whole tree → flicker. | `memo` row components; stable keys; `useCallback` for handlers. |
-| `useInput` stacking | Multiple mounted `useInput` hooks all fire on every keypress. | One input owner per focus mode; gate with `{ isActive }`. |
-| Raw mode | Required for key input; unavailable when stdin is not a TTY. | Check `useStdin().isRawModeSupported`; degrade, don't crash. |
-| Terminal resize | `useStdout().stdout.columns` changes under you. | Subscribe to `resize`; recompute viewport; never hardcode 80×24. |
-| Exit cleanup | A crash can leave the terminal without a cursor or in raw mode. | Restore on `exit`, `SIGINT`, `SIGTERM`, and `uncaughtException`. |
-| Alternate screen | Ink does not use it by default; your app scrolls the user's scrollback. | Write `\x1b[?1049h` on start, `\x1b[?1049l` on exit — Stage 2 decision, needs an ADR. |
-| Unicode width | Emoji and CJK are 2 cells wide; box-drawing may be missing from the font. | ASCII fallback path. Never assume a Nerd Font. |
-| stdout is the canvas | `console.log` anywhere in the tree corrupts the frame. | See §7. |
+| Hazard               | Reality                                                                   | What to do                                                                            |
+| -------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Rendering long lists | Ink re-diffs and rewrites terminal lines. 40k rows = frozen terminal.     | Slice to viewport height before mapping. Stage 2 requirement.                         |
+| Unmemoized children  | Every parent state change re-renders the whole tree → flicker.            | `memo` row components; stable keys; `useCallback` for handlers.                       |
+| `useInput` stacking  | Multiple mounted `useInput` hooks all fire on every keypress.             | One input owner per focus mode; gate with `{ isActive }`.                             |
+| Raw mode             | Required for key input; unavailable when stdin is not a TTY.              | Check `useStdin().isRawModeSupported`; degrade, don't crash.                          |
+| Terminal resize      | `useStdout().stdout.columns` changes under you.                           | Subscribe to `resize`; recompute viewport; never hardcode 80×24.                      |
+| Exit cleanup         | A crash can leave the terminal without a cursor or in raw mode.           | Restore on `exit`, `SIGINT`, `SIGTERM`, and `uncaughtException`.                      |
+| Alternate screen     | Ink does not use it by default; your app scrolls the user's scrollback.   | Write `\x1b[?1049h` on start, `\x1b[?1049l` on exit — Stage 2 decision, needs an ADR. |
+| Unicode width        | Emoji and CJK are 2 cells wide; box-drawing may be missing from the font. | ASCII fallback path. Never assume a Nerd Font.                                        |
+| stdout is the canvas | `console.log` anywhere in the tree corrupts the frame.                    | See §7.                                                                               |
 
 ---
 
@@ -385,7 +414,7 @@ A question costs one message. A wrong guess propagates through three stages.
 
 ```
 START
-  □ read docs/STATE.md
+  □ read report/process/STATE.md
   □ `git branch --show-current` — must be stage-{N} for stage work, or
     develop for governance docs. If it prints `main`, STOP: agents never
     touch main (§5.1)
@@ -405,11 +434,11 @@ END
   □ green gate passes
   □ stage doc log appended (dated, task IDs, deviations)
   □ ADRs written for anything durable
-  □ docs/STATE.md rewritten (including the Branch field)
+  □ report/process/STATE.md rewritten (including the Branch field)
   □ committed with Verified: lines
   □ if stage complete →
       □ write §Handoff in the stage doc
-      □ write docs/version/stage{N}.md from the retrospective template (§4.6)
+      □ write report/retrospectives/stage{N}.md from the retrospective template (§4.6)
       □ STOP and request human sign-off
       □ merge stage-{N} → develop ONLY after sign-off (§5.1)
       □ never merge to main — that is the human's move, not yours
