@@ -5,8 +5,8 @@ A keyboard-driven terminal file explorer, built as a React component tree with
 
 > **Status: Stage 3 of 3 — hardened.** Feature complete since Stage 2; Stage 3 added no features and
 > changed no rendered byte. It added the `core`/`ui` separation, a real-pseudo-terminal test suite,
-> a config file, and the adversarial coverage below. **189 tests, 20 files** — 92 of which run
-> without a terminal at all.
+> a config file, and the adversarial coverage below. **189 tests, 20 files** — 96 of which are plain
+> function calls that mount no renderer at all.
 
 ---
 
@@ -102,9 +102,9 @@ core/   pure — fs · path · preview · sanitize · sort · config · types ·
 ```
 
 The arrow points one way only, and that is a lint rule rather than a convention: `src/core/**` and
-`src/state/**` may not import `react`, `ink`, or anything from `ui/`. The payoff is that **92 of the
-189 tests need no renderer** — all of the cursor, sorting, filtering, windowing and config logic is
-tested as plain functions.
+`src/state/**` may not import `react`, `ink`, or anything from `ui/`. The payoff is that **96 of the
+189 tests mount no renderer** — all of the cursor, sorting, filtering, windowing and config logic is
+tested as plain functions. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ### What is tested
 
@@ -139,25 +139,13 @@ defence has something genuine to fail against.
 
 ## Documentation
 
-> **`docs/` is not published.** By the maintainer's decision it is gitignored, so it lives in the
-> working directory but not in the repository — a fresh `git clone` will not contain it. The table
-> below is a map for anyone working in a checkout that has it.
-
-| Document                                                           | What it is for                                                                                         |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| [`docs/FOR_THE_MAINTAINER.md`](docs/FOR_THE_MAINTAINER.md)         | **Start here.** Project status, what is left, and what only a human can do.                            |
-| [`docs/DEPLOYING_A_TUI.md`](docs/DEPLOYING_A_TUI.md)               | How terminal programs reach users — npm, binaries, Homebrew — and what publishing this one would take. |
-| [`docs/LEARNING_TUI.md`](docs/LEARNING_TUI.md)                     | Every TUI concept, step by step, tied to the file that implements it. For a first-timer.               |
-| [`docs/STATE.md`](docs/STATE.md)                                   | Where the project is _right now_. Read first.                                                          |
-| [`docs/00_PROJECT_INSPIRATION.md`](docs/00_PROJECT_INSPIRATION.md) | Why this project exists, and why Ink. Immutable.                                                       |
-| [`docs/v1_STAGE_1.md`](docs/v1_STAGE_1.md)                         | Stage 1's frozen spec, plus its implementation log.                                                    |
-| [`docs/v2_STAGE_2.md`](docs/v2_STAGE_2.md)                         | Stage 2's frozen spec, log and handoff.                                                                |
-| [`docs/version/stage1.md`](docs/version/stage1.md)                 | The Stage 1 story: choices, surprises, bugs, mistakes.                                                 |
-| [`docs/version/stage2.md`](docs/version/stage2.md)                 | The Stage 2 story, plus the Stage 3 refactor plan.                                                     |
-| [`docs/version/stage3.md`](docs/version/stage3.md)                 | The Stage 3 story: the refactor, the adversaries, what was dropped.                                    |
-| [`docs/v3_STAGE_3.md`](docs/v3_STAGE_3.md)                         | Stage 3's frozen spec, log and handoff.                                                                |
-| [`docs/adr/`](docs/adr/)                                           | Why each non-obvious decision was made.                                                                |
-| [`AGENTS.md`](AGENTS.md) · [`CLAUDE.md`](CLAUDE.md)                | The operating contract for agents working here.                                                        |
+| Document                                            | What it is for                                                        |
+| --------------------------------------------------- | --------------------------------------------------------------------- |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)      | How the code is organised — layers, modules, data flow, invariants.   |
+| [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md)      | Setup, the four-command gate, and the testing conventions.            |
+| [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md)      | How a terminal program reaches users, and what publishing this takes. |
+| [`docs/adr/`](docs/adr/)                            | Why each non-obvious decision was made — one file per decision.       |
+| [`AGENTS.md`](AGENTS.md) · [`CLAUDE.md`](CLAUDE.md) | The operating contract for agents working here.                       |
 
 ## License
 

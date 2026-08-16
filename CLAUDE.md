@@ -9,7 +9,7 @@
 ## 1. First 60 seconds of every session
 
 ```bash
-cat docs/STATE.md
+cat report/process/STATE.md
 git branch --show-current     # stage-{N} for stage work, develop for governance docs.
                               # NEVER main — agents don't touch it. AGENTS.md §5.1
 git log --oneline -10
@@ -53,14 +53,14 @@ Stage 3 refactor. Those need a human "go."
 
 ## 3. Tool usage
 
-| Situation | Do this |
-|---|---|
-| Package versions | `npm view ink version` — **never** trust a version written in a doc, including these docs |
-| Ink / testing-library API uncertainty | Read `node_modules/ink/build/index.d.ts`. Types are ground truth; your training data may be stale. |
-| Reading files | Read before you edit. Always. `str_replace` on an unread file is how you overwrite someone's work. |
-| Searching | Grep for the symbol before assuming it doesn't exist |
-| Running the TUI | You **cannot** meaningfully run it — no TTY, no eyes. `pnpm dev` proves it boots, nothing more. Use tests. |
-| Long output | Pipe through `head`. A 40k-line test output buys you nothing. |
+| Situation                             | Do this                                                                                                    |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Package versions                      | `npm view ink version` — **never** trust a version written in a doc, including these docs                  |
+| Ink / testing-library API uncertainty | Read `node_modules/ink/build/index.d.ts`. Types are ground truth; your training data may be stale.         |
+| Reading files                         | Read before you edit. Always. `str_replace` on an unread file is how you overwrite someone's work.         |
+| Searching                             | Grep for the symbol before assuming it doesn't exist                                                       |
+| Running the TUI                       | You **cannot** meaningfully run it — no TTY, no eyes. `pnpm dev` proves it boots, nothing more. Use tests. |
+| Long output                           | Pipe through `head`. A 40k-line test output buys you nothing.                                              |
 
 ### Parallel subagents
 
@@ -86,7 +86,7 @@ Read this section honestly. These are your failure modes, not generic advice.
 2. **Over-engineering Stage 1.**
    You will want a `FileSystemAdapter` interface, a theme context, and a keybinding registry on day
    one. Stage 1 is `The Bricklayer`. One component file that works beats five that anticipate.
-   The abstraction happens in Stage 3, *after* the shape is known.
+   The abstraction happens in Stage 3, _after_ the shape is known.
 
 3. **Silent scope drift.**
    "While I was in there, I also added…" — no. One task ID per commit. The OUT-OF-SCOPE list is
@@ -94,14 +94,14 @@ Read this section honestly. These are your failure modes, not generic advice.
 
 4. **Agreeing too fast.**
    If the stage doc specifies something that will not work — say so, with the specific reason. The
-   spec is frozen against *casual* edits, not against being wrong. Frozen means you record the
+   spec is frozen against _casual_ edits, not against being wrong. Frozen means you record the
    divergence below the BUILD LINE and ask; it does not mean you implement something broken.
 
 5. **Assuming React browser semantics.**
    No DOM, no CSS, no `overflow: hidden` saving you. Layout is Yoga flexbox on a character grid.
    Every row you render costs a terminal write. See `AGENTS.md §8`.
 
-6. **Finishing a session without updating `docs/STATE.md`.**
+6. **Finishing a session without updating `report/process/STATE.md`.**
    The most damaging and the easiest to fix. It is the last step of every session.
 
 7. **Declaring a stage complete.**
@@ -128,7 +128,7 @@ describe('directory list', () => {
   it('moves the cursor on arrow down', async () => {
     const { lastFrame, stdin } = render(<App cwd="test/fixtures/basic" />);
     await new Promise((r) => setTimeout(r, 50));
-    stdin.write('\u001B[B');            // ↓
+    stdin.write('\u001B[B'); // ↓
     await new Promise((r) => setTimeout(r, 20));
     expect(lastFrame()).toMatch(/❯\s+src/);
   });
@@ -155,7 +155,7 @@ When a stage begins:
 
 1. **Cut the branch first:** `git checkout develop && git checkout -b stage-{N}`. Everything below
    happens on that branch. Not `main` — ever. (`AGENTS.md §5.1`)
-2. `cp docs/_TEMPLATE_STAGE.md docs/v{N}_STAGE_{N}.md`
+2. `cp report/process/_TEMPLATE_STAGE.md report/process/v{N}_STAGE_{N}.md`
 3. Paste the previous stage's `## Handoff` content into `§0 Entry Point`. (For v1, delete §0.)
 4. Fill the spec sections **above the BUILD LINE**: intent, scope in/out, approach, architecture
    diagram, ordered task list with IDs, machine-checkable DoD.
@@ -166,7 +166,7 @@ Writing code before step 6 means the spec gets bent to match whatever you happen
 
 > For v2 and v3 specifically: those docs were drafted during planning and are marked
 > **PROVISIONAL**. At their kickoff you reconcile them against what the previous stage actually
-> built, *then* freeze. That reconciliation is step 4, and it is the last legitimate edit above the
+> built, _then_ freeze. That reconciliation is step 4, and it is the last legitimate edit above the
 > BUILD LINE.
 
 ---
@@ -179,15 +179,15 @@ Writing code before step 6 means the spec gets bent to match whatever you happen
 3. Any `HUMAN GATE` items: state them explicitly and wait.
 4. Write `## Handoff` — this is you telling the next agent what it needs. Be specific about debt,
    surprises, and load-bearing decisions. Assume it will not read your stage's log.
-5. **Write `docs/version/stage{N}.md`** from `docs/version/_TEMPLATE_RETROSPECTIVE.md`
-   (`AGENTS.md §4.6`). This one is for the *human*, not the next agent — prose, the reasoning behind
+5. **Write `report/retrospectives/stage{N}.md`** from `report/retrospectives/_TEMPLATE_RETROSPECTIVE.md`
+   (`AGENTS.md §4.6`). This one is for the _human_, not the next agent — prose, the reasoning behind
    each real choice, the surprises, the bugs with their guarding tests, and an honest "what we got
-   wrong". Source it from the log you appended below the BUILD LINE *as you worked*; if you left that
+   wrong". Source it from the log you appended below the BUILD LINE _as you worked_; if you left that
    log thin, you cannot write this section honestly now, and that is the cost of skipping it.
-6. Update `docs/STATE.md`, including the `Branch` field.
+6. Update `report/process/STATE.md`, including the `Branch` field.
 7. **Stop and request sign-off.** Do not start the next stage. Do not merge.
 8. **After** sign-off: merge `stage-{N}` → `develop`, and record the merge date and the human's name
-   in the retrospective's *At a glance* table. An agent never fills in "Signed off by", and never
+   in the retrospective's _At a glance_ table. An agent never fills in "Signed off by", and never
    merges anything to `main` — `main` moves only when the maintainer moves it.
 
 ---
