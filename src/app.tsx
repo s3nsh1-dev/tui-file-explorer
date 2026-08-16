@@ -48,7 +48,7 @@ export const App = ({ cwd, config = DEFAULT_CONFIG }: AppProps) => {
   // (App.js:121), which Node sets to UNDEFINED — never false — on a non-TTY
   // stream. Routed through `unknown` and narrowed: Boolean() would be flagged
   // as a redundant conversion, which is the type system confidently repeating
-  // Ink's mistake. See docs/version/stage1.md §5.
+  // Ink's mistake. Removing the round-trip reintroduces a crash that shipped.
   const rawModeFlag: unknown = stdin.isRawModeSupported;
   const canReadInput = rawModeFlag === true;
 
