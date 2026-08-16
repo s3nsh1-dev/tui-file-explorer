@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, 'stage-*']
+  pull_request:
+  workflow_dispatch:
+
+# A second push to the same branch cancels the first: a queue of stale runs
+# tells you nothing and costs minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: gate (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      # One version failing should not hide the result for the other.
+      fail-fast: false
+      matrix:
+        # 22 is the floor declared in package.json engines (ADR-0003);
+        # 24 is current. Testing only one of them proves half the claim.
+        node: [22, 24]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        # Version comes from package.json "packageManager" — pinning it twice
+        # is a chance for the two to disagree.
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install
+        # --frozen-lockfile: CI must fail on an out-of-date lockfile rather than
+        # quietly resolving something the developer never tested.
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        # BEFORE the tests, not after: test/cli.test.ts drives the built binary
+        # and skips itself when dist/ is absent. Building first is what makes
+        # the exit-code and non-TTY assertions actually run in CI.
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Verify the binary runs
+        # The gate proves the code is correct; this proves it is executable.
+        run: |
+          node dist/cli.js --version
+          node dist/cli.js src | head -5
+
+      - name: Check formatting
+        run: pnpm format:check
+
+  supply-chain:
+    name: supply chain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Audit
+        run: pnpm audit --audit-level=moderate
+
+      - name: No package-lock.json
+        # ADR-0001: pnpm is the package manager. An npm lockfile appearing here
+        # means someone ran the wrong tool and the dependency tree is unproven.
+        run: |
+          if [ -f package-lock.json ] || [ -f yarn.lock ]; then
+            echo "::error::A non-pnpm lockfile is present. See docs/adr/ADR-0001."
+            exit 1
+          fi
+
+      - name: Inspect the publishable tarball
+        # Packaging is verified by listing what would ship, not by reading the
+        # config and assuming. src/, test/ and docs/ must never be in there.
+        run: |
+          pnpm build
+          pnpm pack --pack-destination /tmp >/dev/null
+          TARBALL=$(ls /tmp/*.tgz | head -1)
+          echo "── contents ──"
+          tar -tzf "$TARBALL"
+          if tar -tzf "$TARBALL" | grep -qE 'package/(src|test|docs)/'; then
+            echo "::error::Tarball contains source, tests or docs."
+            exit 1
+          fi

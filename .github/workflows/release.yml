@@ -1,0 +1,80 @@
+name: Release
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THIS WORKFLOW NEVER RUNS BY ITSELF, BY DESIGN.
+#
+# `workflow_dispatch` only — no push trigger, no tag trigger. The maintainer
+# chose "release-ready, never fired" (2026-08-15), and a workflow that can fire
+# on a tag is one mistyped `git push --tags` away from publishing.
+#
+# TWO INTERLOCKS must be removed by hand before this can succeed:
+#
+#   1. package.json has "private": true. npm refuses to publish it.
+#   2. The name `glim` is TAKEN on npm — an abandoned 0.0.2 stub from 2022.
+#      See docs/adr/ADR-0004. Either scope it (@you/glim, always available,
+#      and `bin` stays `glim` so nothing user-facing changes) or rename.
+#
+# Publishing also needs NPM_TOKEN in repository secrets. The maintainer sets
+# that; an agent never handles credentials.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Pack and inspect only — do not publish'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  # Required for npm provenance: the registry records which workflow and commit
+  # produced the tarball, so consumers can verify it was not built on a laptop.
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Full gate
+        # Never publish something that was not proven first.
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm build
+          pnpm test
+
+      - name: Inspect the tarball
+        run: |
+          pnpm pack --pack-destination /tmp >/dev/null
+          TARBALL=$(ls /tmp/*.tgz | head -1)
+          tar -tzf "$TARBALL"
+          if tar -tzf "$TARBALL" | grep -qE 'package/(src|test|docs)/'; then
+            echo "::error::Tarball contains source, tests or docs."
+            exit 1
+          fi
+
+      - name: Refuse to publish while the interlocks are in place
+        if: ${{ !inputs.dry_run }}
+        run: |
+          if node -p "require('./package.json').private === true"; then
+            echo "::error::package.json is private. Resolve ADR-0004 first."
+            exit 1
+          fi
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        run: pnpm publish --access public --provenance --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

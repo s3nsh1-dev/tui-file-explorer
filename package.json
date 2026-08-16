@@ -8,6 +8,9 @@
   "bin": {
     "glim": "./dist/cli.js"
   },
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=22"
   },
