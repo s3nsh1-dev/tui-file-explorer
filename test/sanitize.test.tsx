@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../src/app.js';
 import { sanitizeName } from '../src/core/sanitize.js';
 import { fixture } from './helpers/fixture.js';
-import { cleanup, render, settle } from './helpers/render.js';
+import { cleanup, render, stripAnsi } from './helpers/render.js';
 
 afterEach(cleanup);
 
@@ -53,10 +53,10 @@ describe('sanitizeName', () => {
 
 describe('the listing never emits raw hostile bytes', () => {
   it('renders the RTL-override fixture escaped', async () => {
-    const { lastFrame } = render(<App cwd={fixture('basic')} />);
-    await settle();
+    const { lastFrame, settled } = render(<App cwd={fixture('basic')} />);
+    await settled();
 
-    const frame = lastFrame() ?? '';
+    const frame = stripAnsi(lastFrame() ?? '');
     expect(frame).not.toContain(ch(0x202e));
     expect(frame).toContain('invoice<U+202E>gpj.txt');
   });

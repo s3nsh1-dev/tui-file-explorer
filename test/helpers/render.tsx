@@ -126,6 +126,14 @@ export type RenderResult = {
   readonly stdin: FakeStdin;
   readonly stdout: FakeStdout;
   readonly stderr: FakeStderr;
+  /**
+   * Wait until this instance's frame stops changing.
+   *
+   * Preferred over `settle(ms)` before any assertion: a fixed delay is a race
+   * with the machine, and the loser is a test that fails on a busy day for a
+   * reason unrelated to the code.
+   */
+  readonly settled: () => Promise<void>;
   /** Change the terminal size and fire Ink's resize handling. */
   readonly resize: (columns: number, rows: number) => void;
   readonly rerender: (tree: ReactElement) => void;
@@ -166,6 +174,7 @@ export const render = (tree: ReactElement, options: RenderOptions = {}): RenderR
     stdin,
     stdout,
     stderr,
+    settled: async () => settleStable(stdout.lastFrame),
     resize: stdout.resize,
     rerender: instance.rerender,
     unmount: instance.unmount,
@@ -191,6 +200,35 @@ export const cleanup = (): void => {
  */
 export const settle = async (ms = 50): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+/**
+ * Wait until the frame stops changing, instead of guessing a duration.
+ *
+ * A fixed `settle(50)` is a race with the machine: the preview read, the
+ * directory read and Ink's frame timer all have to land inside it, and on a
+ * loaded CI box or a 16-file suite they sometimes do not. The symptom is a
+ * golden frame that occasionally captures `loading…` — a flaky snapshot, which
+ * is worse than a failing one because it teaches everyone to re-run the suite.
+ *
+ * Polls until two consecutive reads are identical, then returns. Bounded, so a
+ * genuinely never-settling app fails the test instead of hanging the suite.
+ */
+export const settleStable = async (
+  lastFrame: () => string | undefined,
+  { interval = 15, timeout = 3000 }: { interval?: number; timeout?: number } = {},
+): Promise<void> => {
+  const deadline = Date.now() + timeout;
+  let previous: string | undefined;
+
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, interval));
+    const current = lastFrame();
+    if (current !== undefined && current === previous) return;
+    previous = current;
+  }
+
+  throw new Error(`frame never stabilised within ${String(timeout)}ms`);
 };
 
 /**

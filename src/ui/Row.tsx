@@ -1,8 +1,8 @@
 import { Text } from 'ink';
 import { memo } from 'react';
 import { displayWidth, sanitizeName, truncateToWidth } from '../core/sanitize.js';
-import type { Entry } from '../state/reducer.js';
-import { formatSize } from './format.js';
+import type { Entry } from '../core/types.js';
+import { formatSize } from '../core/format.js';
 import { theme } from './theme.js';
 
 export type RowProps = {

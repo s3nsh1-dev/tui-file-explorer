@@ -1,7 +1,8 @@
 import process from 'node:process';
 import { render } from 'ink';
 import meow from 'meow';
-import { App, resolveTarget } from './app.js';
+import { App } from './app.js';
+import { resolveTarget } from './core/path.js';
 import { sanitizeName } from './core/sanitize.js';
 
 const HELP = `

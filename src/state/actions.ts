@@ -1,4 +1,4 @@
-import type { Entry, Mode } from './reducer.js';
+import type { Entry, Mode } from '../core/types.js';
 
 /**
  * Every way the state can change. A discriminated union rather than loose

@@ -1,6 +1,7 @@
 import { Box, Text } from 'ink';
 import { sanitizeName, truncateToWidth } from '../core/sanitize.js';
-import type { Mode, SortKey } from '../state/reducer.js';
+import { isPresent, pluralise } from '../core/util.js';
+import type { Mode, SortKey } from '../core/types.js';
 import { theme } from './theme.js';
 
 export type StatusBarProps = {
@@ -26,15 +27,18 @@ export const StatusBar = ({
   mode,
   width,
 }: StatusBarProps) => {
+  // `1 item`, not `1 items` — the old inline template got this wrong for a
+  // single-entry directory, which is exactly the sort of thing a shared helper
+  // fixes once instead of in each place someone remembers.
   const counts =
-    visible === total ? `${String(total)} items` : `${String(visible)}/${String(total)}`;
+    visible === total ? pluralise(total, 'item') : `${String(visible)}/${String(total)}`;
 
   const facts = [
     counts,
     `sort ${sortKey}${sortReverse ? ' ↓' : ' ↑'}`,
     showHidden ? 'hidden shown' : null,
     filter === '' ? null : `filter "${sanitizeName(filter)}"`,
-  ].filter((part): part is string => part !== null);
+  ].filter(isPresent);
 
   return (
     <Box flexDirection="column">

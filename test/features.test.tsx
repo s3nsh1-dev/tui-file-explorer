@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../src/app.js';
 import { fixture } from './helpers/fixture.js';
-import { KEY, cleanup, render, settle, stripAnsi } from './helpers/render.js';
+import { KEY, cleanup, render, stripAnsi } from './helpers/render.js';
 
 afterEach(cleanup);
 
@@ -15,8 +15,8 @@ const NARROW = { columns: 50, rows: 20 } as const;
 
 describe('two-pane layout', () => {
   it('shows a preview pane beside the listing on a wide terminal', async () => {
-    const { lastFrame } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
 
     const frame = frameOf(lastFrame);
     expect(frame).toContain('README.md');
@@ -27,8 +27,8 @@ describe('two-pane layout', () => {
   });
 
   it('drops the preview pane rather than crushing it on a narrow terminal', async () => {
-    const { lastFrame } = render(<App cwd={fixture('basic')} />, NARROW);
-    await settle();
+    const { lastFrame, settled } = render(<App cwd={fixture('basic')} />, NARROW);
+    await settled();
 
     const frame = frameOf(lastFrame);
     expect(frame).toContain('README.md');
@@ -36,8 +36,8 @@ describe('two-pane layout', () => {
   });
 
   it('never lets a row exceed the terminal width', async () => {
-    const { lastFrame } = render(<App cwd={fixture('basic')} />, NARROW);
-    await settle();
+    const { lastFrame, settled } = render(<App cwd={fixture('basic')} />, NARROW);
+    await settled();
 
     for (const line of frameOf(lastFrame).split('\n')) {
       expect(line.length).toBeLessThanOrEqual(NARROW.columns);
@@ -47,62 +47,62 @@ describe('two-pane layout', () => {
 
 describe('hidden files', () => {
   it('hides dotfiles by default and reveals them on "."', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
     expect(frameOf(lastFrame)).not.toContain('.hidden-file');
 
     stdin.write('.');
-    await settle();
+    await settled();
     expect(frameOf(lastFrame)).toContain('.hidden-file');
 
     stdin.write('.');
-    await settle();
+    await settled();
     expect(frameOf(lastFrame)).not.toContain('.hidden-file');
   });
 });
 
 describe('sorting', () => {
   it('reports the active sort key in the status bar and cycles it', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
     expect(frameOf(lastFrame)).toContain('sort name');
 
     stdin.write('s');
-    await settle();
+    await settled();
     expect(frameOf(lastFrame)).toContain('sort size');
 
     stdin.write('s');
-    await settle();
+    await settled();
     expect(frameOf(lastFrame)).toContain('sort mtime');
   });
 
   it('keeps the selection on the same file across a sort change', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
 
     stdin.write(KEY.down);
     stdin.write(KEY.down);
-    await settle();
+    await settled();
     const selectedBefore = /❯ (\S+)/.exec(frameOf(lastFrame))?.[1];
     expect(selectedBefore).toBeDefined();
 
     stdin.write('s');
-    await settle();
+    await settled();
     expect(/❯ (\S+)/.exec(frameOf(lastFrame))?.[1]).toBe(selectedBefore);
   });
 });
 
 describe('filter mode', () => {
   it('narrows the listing as you type and shows the query', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
 
     stdin.write('/');
-    await settle();
+    await settled();
     stdin.write('r');
-    await settle();
+    await settled();
     stdin.write('e');
-    await settle();
+    await settled();
 
     const frame = frameOf(lastFrame);
     expect(frame).toContain('README.md');
@@ -111,34 +111,34 @@ describe('filter mode', () => {
   });
 
   it('restores the full listing and the previous selection on escape', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
 
     stdin.write(KEY.down);
-    await settle();
+    await settled();
     const before = frameOf(lastFrame);
 
     stdin.write('/');
-    await settle();
+    await settled();
     stdin.write('r');
-    await settle();
+    await settled();
     expect(frameOf(lastFrame)).not.toContain('package.json');
 
     stdin.write(KEY.escape);
-    await settle();
+    await settled();
     expect(frameOf(lastFrame)).toBe(before);
   });
 
   it('keeps the filter after enter and reports it in the status bar', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
 
     stdin.write('/');
-    await settle();
+    await settled();
     stdin.write('r');
-    await settle();
+    await settled();
     stdin.write(KEY.enter);
-    await settle();
+    await settled();
 
     const frame = frameOf(lastFrame);
     expect(frame).toContain('filter "r"');
@@ -146,16 +146,16 @@ describe('filter mode', () => {
   });
 
   it('says so when nothing matches instead of rendering a blank pane', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
 
     stdin.write('/');
-    await settle();
+    await settled();
     for (const character of 'zzzz') {
       stdin.write(character);
-      await settle(10);
+      await settled();
     }
-    await settle();
+    await settled();
 
     expect(frameOf(lastFrame)).toContain('no matches');
   });
@@ -163,30 +163,30 @@ describe('filter mode', () => {
 
 describe('help overlay', () => {
   it('opens on ? and closes on any key', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, WIDE);
+    await settled();
 
     stdin.write('?');
-    await settle();
+    await settled();
     const help = frameOf(lastFrame);
     expect(help).toContain('Keys');
     expect(help).toContain('read-only');
     expect(help).not.toContain('README.md');
 
     stdin.write('x');
-    await settle();
+    await settled();
     expect(frameOf(lastFrame)).toContain('README.md');
   });
 });
 
 describe('preview', () => {
   it('shows the first lines of a text file', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('preview')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('preview')} />, WIDE);
+    await settled();
 
     // Entries sort as: binary.bin, empty.txt, escape.txt, text.txt
     stdin.write('G');
-    await settle();
+    await settled();
 
     const frame = frameOf(lastFrame);
     expect(frame).toContain('line one');
@@ -194,8 +194,8 @@ describe('preview', () => {
   });
 
   it('refuses to render a binary file as text', async () => {
-    const { lastFrame } = render(<App cwd={fixture('preview')} />, WIDE);
-    await settle();
+    const { lastFrame, settled } = render(<App cwd={fixture('preview')} />, WIDE);
+    await settled();
 
     const frame = frameOf(lastFrame);
     expect(frame).toContain('binary file');
@@ -204,12 +204,12 @@ describe('preview', () => {
   });
 
   it('escapes control sequences found in FILE CONTENT, not just in names', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('preview')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('preview')} />, WIDE);
+    await settled();
 
     stdin.write(KEY.down);
     stdin.write(KEY.down);
-    await settle();
+    await settled();
 
     const raw = lastFrame() ?? '';
     const frame = stripAnsi(raw);
@@ -220,11 +220,11 @@ describe('preview', () => {
   });
 
   it('says a file is empty rather than showing nothing', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('preview')} />, WIDE);
-    await settle();
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('preview')} />, WIDE);
+    await settled();
 
     stdin.write(KEY.down);
-    await settle();
+    await settled();
 
     expect(frameOf(lastFrame)).toContain('empty file');
   });
@@ -240,8 +240,8 @@ describe('viewport windowing', () => {
         ),
       );
 
-      const { lastFrame } = render(<App cwd={big} />, { columns: 100, rows: 24 });
-      await settle(300);
+      const { lastFrame, settled } = render(<App cwd={big} />, { columns: 100, rows: 24 });
+      await settled();
 
       const frame = frameOf(lastFrame);
       const rendered = (frame.match(/entry-\d{4}\.txt/g) ?? []).length;
@@ -264,14 +264,14 @@ describe('viewport windowing', () => {
         ),
       );
 
-      const { lastFrame, stdin } = render(<App cwd={big} />, { columns: 100, rows: 24 });
-      await settle(200);
+      const { lastFrame, stdin, settled } = render(<App cwd={big} />, { columns: 100, rows: 24 });
+      await settled();
       expect(frameOf(lastFrame)).toContain('f-000.txt');
 
       for (let press = 0; press < 40; press += 1) {
         stdin.write(KEY.down);
       }
-      await settle(200);
+      await settled();
 
       const frame = frameOf(lastFrame);
       expect(frame).not.toContain('f-000.txt');

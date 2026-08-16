@@ -1,3 +1,5 @@
+import { clamp } from '../core/util.js';
+
 /**
  * Viewport windowing. There is no DOM and no `overflow: hidden` — every row
  * handed to Ink is a terminal write, so a 40,000-entry directory must be sliced
@@ -34,7 +36,7 @@ export const nextOffset = (
   // A margin of 2 is meaningless in a 3-row viewport: the cursor would be
   // inside both margins at once and the window would oscillate. Shrink it to
   // whatever the viewport can actually afford. (Stage 3 adversary A5.)
-  const effective = Math.min(margin, Math.max(0, Math.floor((height - 1) / 2)));
+  const effective = clamp(Math.floor((height - 1) / 2), 0, margin);
 
   let offset = previous;
   if (cursor - effective < offset) {
@@ -44,7 +46,7 @@ export const nextOffset = (
     offset = cursor - height + 1 + effective;
   }
 
-  return Math.min(Math.max(offset, 0), maxOffset);
+  return clamp(offset, 0, maxOffset);
 };
 
 /** The rows actually rendered. Slice before mapping — that is the whole point. */

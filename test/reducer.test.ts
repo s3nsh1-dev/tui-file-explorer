@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Entry } from '../src/state/reducer.js';
+import type { Entry } from '../src/core/types.js';
 import { cursorIndex, initialState, reducer, selectedEntry } from '../src/state/reducer.js';
 
 const entry = (name: string, over: Partial<Entry> = {}): Entry => ({

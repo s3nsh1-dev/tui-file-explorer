@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatSize } from '../src/ui/format.js';
+import { formatSize } from '../src/core/format.js';
 
 describe('formatSize', () => {
   it('shows plain bytes below 1 KiB', () => {

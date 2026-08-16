@@ -5,7 +5,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { displayWidth } from '../src/core/sanitize.js';
 import { App } from '../src/app.js';
 import { fixture } from './helpers/fixture.js';
-import { KEY, cleanup, countSgr, render, settle, stripAnsi } from './helpers/render.js';
+import {
+  KEY,
+  cleanup,
+  countSgr,
+  render,
+  settle,
+  settleStable,
+  stripAnsi,
+} from './helpers/render.js';
 
 afterEach(cleanup);
 
@@ -26,19 +34,19 @@ const snapshot = async (name: string, frame: string | undefined): Promise<void> 
 describe('golden frames', () => {
   it('two panes at 100x20', async () => {
     const { lastFrame } = render(<App cwd={fixture('basic')} />, { columns: 100, rows: 20 });
-    await settle();
+    await settleStable(lastFrame);
     await snapshot('two-pane-100x20', lastFrame());
   });
 
   it('single pane at 50x20 — preview dropped', async () => {
     const { lastFrame } = render(<App cwd={fixture('basic')} />, { columns: 50, rows: 20 });
-    await settle();
+    await settleStable(lastFrame);
     await snapshot('narrow-50x20', lastFrame());
   });
 
   it('wide terminal at 120x30', async () => {
     const { lastFrame } = render(<App cwd={fixture('basic')} />, { columns: 120, rows: 30 });
-    await settle();
+    await settleStable(lastFrame);
     await snapshot('wide-120x30', lastFrame());
   });
 
@@ -48,7 +56,7 @@ describe('golden frames', () => {
     stdin.write('/');
     await settle();
     stdin.write('r');
-    await settle();
+    await settleStable(lastFrame);
     await snapshot('filter-active-100x20', lastFrame());
   });
 
@@ -56,13 +64,13 @@ describe('golden frames', () => {
     const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, { columns: 100, rows: 20 });
     await settle();
     stdin.write('?');
-    await settle();
+    await settleStable(lastFrame);
     await snapshot('help-100x20', lastFrame());
   });
 
   it('binary preview', async () => {
     const { lastFrame } = render(<App cwd={fixture('preview')} />, { columns: 100, rows: 20 });
-    await settle();
+    await settleStable(lastFrame);
     await snapshot('preview-binary-100x20', lastFrame());
   });
 
@@ -70,7 +78,7 @@ describe('golden frames', () => {
     const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, { columns: 100, rows: 20 });
     await settle();
     stdin.write('.');
-    await settle();
+    await settleStable(lastFrame);
     await snapshot('hidden-shown-100x20', lastFrame());
   });
 
@@ -80,7 +88,7 @@ describe('golden frames', () => {
       rows: 20,
       stdinIsTTY: false,
     });
-    await settle();
+    await settleStable(lastFrame);
     await snapshot('no-tty-100x20', lastFrame());
   });
 
@@ -172,7 +180,7 @@ describe('column alignment', () => {
   for (const size of sizes) {
     it(`every row is exactly ${String(size.columns)} cells at ${String(size.columns)}x${String(size.rows)}`, async () => {
       const { lastFrame } = render(<App cwd={fixture('basic')} />, size);
-      await settle();
+      await settleStable(lastFrame);
 
       const lines = stripAnsi(lastFrame() ?? '')
         .replace(/\n$/, '')

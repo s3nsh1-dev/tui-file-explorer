@@ -1,16 +1,6 @@
+import type { Entry, Mode, SortKey, Status } from '../core/types.js';
+import { clamp } from '../core/util.js';
 import type { Action } from './actions.js';
-
-export type Mode = 'normal' | 'filter' | 'help';
-export type SortKey = 'name' | 'size' | 'mtime' | 'ext';
-export type Status = 'loading' | 'ready' | 'error';
-
-export type Entry = {
-  readonly name: string;
-  readonly isDirectory: boolean;
-  readonly isSymlink: boolean;
-  readonly size: number;
-  readonly mtimeMs: number;
-};
 
 export type State = {
   readonly dir: string;
@@ -171,7 +161,7 @@ export const reducer = (state: State, action: Action): State => {
     case 'MOVE': {
       const index = cursorIndex(state);
       if (index < 0) return state;
-      const target = Math.min(Math.max(index + action.delta, 0), state.visible.length - 1);
+      const target = clamp(index + action.delta, 0, state.visible.length - 1);
       return {
         ...state,
         cursorName: state.visible[target]?.name ?? state.cursorName,

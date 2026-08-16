@@ -1,5 +1,6 @@
 import { Box, Text } from 'ink';
 import { truncateToWidth } from '../core/sanitize.js';
+import type { Style } from './theme.js';
 import { theme } from './theme.js';
 
 const BINDINGS: readonly (readonly [string, string])[] = [
@@ -21,7 +22,7 @@ type Line = {
   readonly key: string;
   readonly label: string;
   readonly description: string | null;
-  readonly style: Record<string, unknown>;
+  readonly style: Style;
 };
 
 export type HelpProps = {

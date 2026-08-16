@@ -6,9 +6,9 @@ import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../src/app.js';
 import { displayWidth } from '../src/core/sanitize.js';
-import { readPreview } from '../src/ui/hooks/usePreview.js';
+import { readPreview } from '../src/core/preview.js';
 import { fixture } from './helpers/fixture.js';
-import { KEY, cleanup, render, settle, stripAnsi } from './helpers/render.js';
+import { KEY, cleanup, render, stripAnsi } from './helpers/render.js';
 
 afterEach(cleanup);
 
@@ -57,8 +57,8 @@ describe('non-regular files are refused, never opened', () => {
     try {
       execFileSync('mkfifo', [path.join(dir, 'pipe')]);
 
-      const { lastFrame } = render(<App cwd={dir} />, { columns: 100, rows: 12 });
-      await settle(200);
+      const { lastFrame, settled } = render(<App cwd={dir} />, { columns: 100, rows: 12 });
+      await settled();
 
       const frame = stripAnsi(lastFrame() ?? '');
       expect(frame).toContain('pipe');
@@ -82,14 +82,17 @@ describe('unreadable directories', () => {
     await chmod(denied, 0o000);
 
     try {
-      const { lastFrame, stdin } = render(<App cwd={denied} />, { columns: 100, rows: 12 });
-      await settle(150);
+      const { lastFrame, stdin, settled } = render(<App cwd={denied} />, {
+        columns: 100,
+        rows: 12,
+      });
+      await settled();
 
       expect(stripAnsi(lastFrame() ?? '')).toMatch(/permission denied/i);
 
       // The keymap is still alive: help opens, so the user can get out.
       stdin.write('?');
-      await settle();
+      await settled();
       expect(stripAnsi(lastFrame() ?? '')).toContain('Keys');
     } finally {
       await chmod(denied, 0o755);
@@ -104,8 +107,11 @@ describe('quitting from an error state', () => {
     await chmod(denied, 0o000);
 
     try {
-      const { stdin, waitUntilExit } = render(<App cwd={denied} />, { columns: 80, rows: 12 });
-      await settle(150);
+      const { stdin, waitUntilExit, settled } = render(<App cwd={denied} />, {
+        columns: 80,
+        rows: 12,
+      });
+      await settled();
 
       stdin.write('q');
       // Resolves only if exit() ran. An error state must not trap the user.
@@ -124,12 +130,12 @@ describe('terminal resize', () => {
       await writeFile(path.join(dir, 'alpha.txt'), 'hello preview\n');
       await writeFile(path.join(dir, 'beta.txt'), 'other\n');
 
-      const { lastFrame, resize } = render(<App cwd={dir} />, { columns: 120, rows: 16 });
-      await settle(150);
+      const { lastFrame, resize, settled } = render(<App cwd={dir} />, { columns: 120, rows: 16 });
+      await settled();
       expect(stripAnsi(lastFrame() ?? '')).toContain('hello preview');
 
       resize(50, 16);
-      await settle(150);
+      await settled();
 
       const narrow = stripAnsi(lastFrame() ?? '');
       expect(narrow).not.toContain('hello preview');
@@ -147,12 +153,12 @@ describe('terminal resize', () => {
     try {
       await writeFile(path.join(dir, 'alpha.txt'), 'hello preview\n');
 
-      const { lastFrame, resize } = render(<App cwd={dir} />, { columns: 50, rows: 16 });
-      await settle(150);
+      const { lastFrame, resize, settled } = render(<App cwd={dir} />, { columns: 50, rows: 16 });
+      await settled();
       expect(stripAnsi(lastFrame() ?? '')).not.toContain('hello preview');
 
       resize(120, 16);
-      await settle(150);
+      await settled();
       expect(stripAnsi(lastFrame() ?? '')).toContain('hello preview');
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -168,15 +174,18 @@ describe('terminal resize', () => {
         ),
       );
 
-      const { lastFrame, stdin, resize } = render(<App cwd={dir} />, { columns: 80, rows: 24 });
-      await settle(200);
+      const { lastFrame, stdin, resize, settled } = render(<App cwd={dir} />, {
+        columns: 80,
+        rows: 24,
+      });
+      await settled();
 
       for (let press = 0; press < 30; press += 1) stdin.write(KEY.down);
-      await settle(200);
+      await settled();
       expect(stripAnsi(lastFrame() ?? '')).toMatch(/❯ f-30\.txt/);
 
       resize(80, 10);
-      await settle(200);
+      await settled();
 
       // The window must follow the cursor down, not strand it off-screen.
       expect(stripAnsi(lastFrame() ?? '')).toMatch(/❯ f-30\.txt/);
@@ -193,13 +202,13 @@ describe('terminal resize', () => {
  */
 describe('help overlay in a short terminal', () => {
   it('clips instead of interleaving its own lines', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, {
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, {
       columns: 60,
       rows: 10,
     });
-    await settle();
+    await settled();
     stdin.write('?');
-    await settle();
+    await settled();
 
     const frame = stripAnsi(lastFrame() ?? '');
     // The title survives intact — it rendered as " eys" before the fix.
@@ -210,13 +219,13 @@ describe('help overlay in a short terminal', () => {
   });
 
   it('renders every row at exactly the terminal width', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, {
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, {
       columns: 60,
       rows: 10,
     });
-    await settle();
+    await settled();
     stdin.write('?');
-    await settle();
+    await settled();
 
     for (const line of stripAnsi(lastFrame() ?? '')
       .replace(/\n$/, '')

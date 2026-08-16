@@ -1,5 +1,5 @@
 import { Box, Text } from 'ink';
-import type { Entry } from '../state/reducer.js';
+import type { Entry } from '../core/types.js';
 import { Row } from './Row.js';
 import { theme } from './theme.js';
 

@@ -1,11 +1,8 @@
-import { lstat, readdir, stat } from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import { Box, useApp, useInput, useStdin, useWindowSize } from 'ink';
 import { useEffect, useReducer, useState } from 'react';
 import { describeFsError } from './core/errors.js';
-import { sanitizeName } from './core/sanitize.js';
-import type { Entry } from './state/reducer.js';
+import { readDirectory } from './core/fs.js';
+import { childOf, displayPath, parentOf } from './core/path.js';
 import { cursorIndex, initialState, reducer, selectedEntry } from './state/reducer.js';
 import { nextOffset, windowSlice } from './state/selectors.js';
 import { Frame } from './ui/Frame.js';
@@ -15,7 +12,15 @@ import { Preview } from './ui/Preview.js';
 import { StatusBar } from './ui/StatusBar.js';
 import { usePreview } from './ui/hooks/usePreview.js';
 
-export type { Entry } from './state/reducer.js';
+/**
+ * The root component: hooks, layout arithmetic, and JSX.
+ *
+ * After the S3-02 split this file holds no filesystem access, no path
+ * manipulation and no text processing — those are `core/fs`, `core/path` and
+ * `core/sanitize`. What is left is the part that genuinely needs React: wiring
+ * state to effects to rendered output, and deciding how many cells each pane
+ * gets.
+ */
 
 /** border(2) + header(1) + status(2). */
 const CHROME_ROWS = 5;
@@ -27,105 +32,11 @@ const SCROLL_MARGIN = 2;
 const PREVIEW_MIN_WIDTH = 70;
 /** Share of the inner width given to the listing when both panes are shown. */
 const LIST_FRACTION = 0.45;
-/** Concurrent stat() calls. Unbounded Promise.all on 40k entries is EMFILE. */
-const STAT_CONCURRENCY = 64;
+/** Smallest usable inner width before layout arithmetic stops being meaningful. */
+const MIN_INNER_WIDTH = 8;
 
 export type AppProps = {
   readonly cwd: string;
-};
-
-export type TargetResult =
-  { readonly ok: true; readonly path: string } | { readonly ok: false; readonly message: string };
-
-/**
- * Validate the CLI path argument before Ink mounts.
- *
- * Failing here means one clean stderr line and a non-zero exit — not a React
- * error boundary, and not a half-drawn TUI over a terminal already in raw mode.
- */
-export const resolveTarget = async (input: string): Promise<TargetResult> => {
-  const resolved = path.resolve(input);
-  try {
-    const stats = await stat(resolved);
-    if (!stats.isDirectory()) {
-      return {
-        ok: false,
-        message: `not a directory: ${sanitizeName(resolved)}`,
-      };
-    }
-    return { ok: true, path: resolved };
-  } catch (error) {
-    return { ok: false, message: describeFsError(error, resolved) };
-  }
-};
-
-/** `/home/you/projects` → `~/projects`. Cosmetic only; never used for I/O. */
-const displayPath = (target: string): string => {
-  const home = os.homedir();
-  if (target === home) return '~';
-  if (target.startsWith(home + path.sep)) return `~${target.slice(home.length)}`;
-  return target;
-};
-
-/**
- * List a directory with the size and mtime that sorting needs.
- *
- * `readdir` gives names and types but no size, so every entry needs a stat.
- * Batched rather than one big `Promise.all`: 40,000 simultaneous opens is
- * EMFILE, which would turn a large directory into a crash instead of a wait.
- */
-const readDirectory = async (dir: string): Promise<readonly Entry[]> => {
-  const dirents = await readdir(dir, { withFileTypes: true });
-  const entries: Entry[] = [];
-
-  for (let index = 0; index < dirents.length; index += STAT_CONCURRENCY) {
-    const batch = dirents.slice(index, index + STAT_CONCURRENCY);
-
-    const resolved = await Promise.all(
-      batch.map(async (dirent): Promise<Entry> => {
-        const full = path.join(dir, dirent.name);
-        const isSymlink = dirent.isSymbolicLink();
-        let isDirectory = dirent.isDirectory();
-
-        if (isSymlink) {
-          try {
-            // readdir reports link-type, so a symlink to a directory would
-            // otherwise sort and navigate as a file.
-            isDirectory = (await stat(full)).isDirectory();
-          } catch {
-            // Dangling symlink. Not an error worth failing the listing over —
-            // it is shown as a non-directory and previewing reports why.
-            isDirectory = false;
-          }
-        }
-
-        try {
-          const stats = await lstat(full);
-          return {
-            name: dirent.name,
-            isDirectory,
-            isSymlink,
-            size: stats.size,
-            mtimeMs: stats.mtimeMs,
-          };
-        } catch {
-          // Raced with a delete between readdir and lstat. One unreadable entry
-          // must not fail the whole listing; show it with unknown size.
-          return {
-            name: dirent.name,
-            isDirectory,
-            isSymlink,
-            size: 0,
-            mtimeMs: 0,
-          };
-        }
-      }),
-    );
-
-    entries.push(...resolved);
-  }
-
-  return entries;
 };
 
 export const App = ({ cwd }: AppProps) => {
@@ -170,9 +81,9 @@ export const App = ({ cwd }: AppProps) => {
   }, [dir]);
 
   const selected = selectedEntry(state);
-  const preview = usePreview(selected === undefined ? null : path.join(dir, selected.name));
+  const preview = usePreview(selected === undefined ? null : childOf(dir, selected.name));
 
-  const innerWidth = Math.max(columns - CHROME_COLUMNS, 8);
+  const innerWidth = Math.max(columns - CHROME_COLUMNS, MIN_INNER_WIDTH);
   const bodyHeight = Math.max(rows - CHROME_ROWS, 1);
   const showPreview = innerWidth >= PREVIEW_MIN_WIDTH;
   const listWidth = showPreview ? Math.floor(innerWidth * LIST_FRACTION) : innerWidth;
@@ -280,15 +191,16 @@ export const App = ({ cwd }: AppProps) => {
 
       if (key.return || key.rightArrow || input === 'l') {
         if (selected?.isDirectory === true) {
-          dispatch({ type: 'NAVIGATE', dir: path.join(dir, selected.name) });
+          dispatch({ type: 'NAVIGATE', dir: childOf(dir, selected.name) });
         }
         return;
       }
 
       if (key.leftArrow || input === 'h') {
-        const parent = path.dirname(dir);
-        // At the filesystem root dirname('/') === '/'. Stop rather than loop.
-        if (parent !== dir) dispatch({ type: 'NAVIGATE', dir: parent });
+        // parentOf returns null at the filesystem root, so "there is no parent"
+        // is a value to handle rather than a condition to remember.
+        const parent = parentOf(dir);
+        if (parent !== null) dispatch({ type: 'NAVIGATE', dir: parent });
       }
     },
     { isActive: canReadInput },

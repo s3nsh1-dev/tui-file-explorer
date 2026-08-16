@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { resolveTarget } from '../src/app.js';
+import { resolveTarget } from '../src/core/path.js';
 import { fixture } from './helpers/fixture.js';
 
 describe('resolveTarget', () => {

@@ -110,6 +110,40 @@ export default tseslint.config(
     },
   },
 
+  // ── src/core/ and src/state/ — the PURE half of the codebase. ──
+  //
+  // The whole value of the core ⟂ ui split is that this logic can be tested
+  // without a renderer: 31 of the tests import no React at all. That property
+  // erodes the first time someone adds `import { useState }` to a core module
+  // "just for this one thing", and nobody notices until the day the tests need
+  // a terminal. This rule makes the erosion fail the build instead.
+  {
+    files: ['src/core/**/*.ts', 'src/state/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react',
+              message: 'core/ and state/ are pure. React belongs in src/ui/.',
+            },
+            {
+              name: 'ink',
+              message: 'core/ and state/ are pure. Ink belongs in src/ui/.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['../ui/*', '**/ui/*'],
+              message: 'The dependency arrow points ui → core, never the reverse.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // ── test/ — may mutate the filesystem to build fixtures, and will spawn a
   // PTY in Stage 3. The src/ boundary does not apply to the harness. ──
   {

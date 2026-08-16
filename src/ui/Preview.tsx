@@ -1,7 +1,8 @@
 import { Box, Text } from 'ink';
 import { truncateToWidth } from '../core/sanitize.js';
-import { formatSize } from './format.js';
-import type { Preview as PreviewState } from './hooks/usePreview.js';
+import { pluralise } from '../core/util.js';
+import { formatSize } from '../core/format.js';
+import type { PreviewState } from '../core/types.js';
 import { theme } from './theme.js';
 
 export type PreviewProps = {
@@ -48,9 +49,7 @@ export const Preview = ({ preview, width, height }: PreviewProps) => {
       const shown = preview.names.slice(0, rows - 1);
       return (
         <Box flexDirection="column">
-          <Text {...theme.muted}>
-            {fit(`${String(preview.total)} ${preview.total === 1 ? 'item' : 'items'}`)}
-          </Text>
+          <Text {...theme.muted}>{fit(pluralise(preview.total, 'item'))}</Text>
           {shown.map((name) => (
             <Text key={name} {...theme.directory}>
               {fit(name)}

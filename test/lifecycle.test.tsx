@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../src/app.js';
 import { fixture } from './helpers/fixture.js';
-import { cleanup, render, settle } from './helpers/render.js';
+import { cleanup, render, stripAnsi } from './helpers/render.js';
 
 afterEach(cleanup);
 
 describe('quitting', () => {
   it('exits on q', async () => {
-    const { stdin, waitUntilExit } = render(<App cwd={fixture('basic')} />);
-    await settle();
+    const { stdin, waitUntilExit, settled } = render(<App cwd={fixture('basic')} />);
+    await settled();
 
     stdin.write('q');
 
@@ -26,35 +26,35 @@ describe('raw mode degradation', () => {
    * The app must gate on isRawModeSupported rather than let that throw.
    */
   it('still renders the listing when raw mode is unavailable', async () => {
-    const { lastFrame } = render(<App cwd={fixture('basic')} />, {
+    const { lastFrame, settled } = render(<App cwd={fixture('basic')} />, {
       stdinIsTTY: false,
     });
-    await settle();
+    await settled();
 
-    const frame = lastFrame() ?? '';
+    const frame = stripAnsi(lastFrame() ?? '');
     expect(frame).toContain('README.md');
     expect(frame).toContain('docs/');
   });
 
   it('tells the user input is unavailable instead of failing silently', async () => {
-    const { lastFrame } = render(<App cwd={fixture('basic')} />, {
+    const { lastFrame, settled } = render(<App cwd={fixture('basic')} />, {
       stdinIsTTY: false,
     });
-    await settle();
+    await settled();
 
-    expect(lastFrame() ?? '').toMatch(/input unavailable/i);
+    expect(stripAnsi(lastFrame() ?? '')).toMatch(/input unavailable/i);
   });
 
   it('does not crash when keys are sent with raw mode unavailable', async () => {
-    const { lastFrame, stdin } = render(<App cwd={fixture('basic')} />, {
+    const { lastFrame, stdin, settled } = render(<App cwd={fixture('basic')} />, {
       stdinIsTTY: false,
     });
-    await settle();
+    await settled();
 
     const before = lastFrame();
     stdin.write('j');
     stdin.write('q');
-    await settle();
+    await settled();
 
     // Input is inert, not fatal: the frame is unchanged and we are still alive.
     expect(lastFrame()).toBe(before);
