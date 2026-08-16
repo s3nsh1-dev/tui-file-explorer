@@ -80,7 +80,7 @@ Desktop.ini
 # Full write-up: docs/INCIDENT-2026-08-16-docs-loss.md
 # If you want the docs off a public remote, move them OUT of this repository
 # rather than ignoring them in place.
-
+docs/
 # ───────────────────────── misc ─────────────────────────────────
 .cache/
 tmp/
