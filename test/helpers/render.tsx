@@ -26,12 +26,21 @@ class FakeStdout extends EventEmitter {
   readonly frames: string[] = [];
   #lastFrame: string | undefined;
 
+  // Mutable, not readonly: Ink's useWindowSize reads these on every 'resize'
+  // event, so simulating a terminal resize means changing them and emitting.
   constructor(
-    readonly columns: number,
-    readonly rows: number,
+    public columns: number,
+    public rows: number,
   ) {
     super();
   }
+
+  /** Simulate the user dragging the terminal edge. */
+  readonly resize = (columns: number, rows: number): void => {
+    this.columns = columns;
+    this.rows = rows;
+    this.emit('resize');
+  };
 
   readonly write = (frame: string): void => {
     this.frames.push(frame);
@@ -117,6 +126,8 @@ export type RenderResult = {
   readonly stdin: FakeStdin;
   readonly stdout: FakeStdout;
   readonly stderr: FakeStderr;
+  /** Change the terminal size and fire Ink's resize handling. */
+  readonly resize: (columns: number, rows: number) => void;
   readonly rerender: (tree: ReactElement) => void;
   readonly unmount: () => void;
   readonly cleanup: () => void;
@@ -155,6 +166,7 @@ export const render = (tree: ReactElement, options: RenderOptions = {}): RenderR
     stdin,
     stdout,
     stderr,
+    resize: stdout.resize,
     rerender: instance.rerender,
     unmount: instance.unmount,
     cleanup: instance.cleanup,
@@ -197,3 +209,21 @@ export const KEY = {
   enter: String.fromCharCode(0x0d),
   escape: ESC,
 } as const;
+
+/**
+ * Remove ANSI escape sequences so a frame is human-diffable.
+ *
+ * Golden frames are committed as plain text: a snapshot full of SGR codes is
+ * unreviewable, and reviewing every snapshot change by hand is the whole point
+ * (CLAUDE.md §5 — never bulk-accept `-u`). Colour is asserted separately by
+ * counting SGR sequences, which is a different question from layout.
+ *
+ * The pattern is built with fromCharCode so no literal ESC byte lands in source.
+ */
+const ANSI_PATTERN = new RegExp(`${String.fromCharCode(0x1b)}\\[[0-9;?]*[A-Za-z]`, 'g');
+
+export const stripAnsi = (text: string): string => text.replace(ANSI_PATTERN, '');
+
+/** How many SGR (colour/style) sequences a frame contains. */
+export const countSgr = (text: string): number =>
+  (text.match(new RegExp(`${String.fromCharCode(0x1b)}\\[[0-9;]*m`, 'g')) ?? []).length;

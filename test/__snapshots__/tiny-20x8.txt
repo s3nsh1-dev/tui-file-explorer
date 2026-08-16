@@ -1,0 +1,8 @@
+╭──────────────────╮
+│glim …xtures/basic│
+│❯ docs/           │
+│  src/            │
+│  file with … 7 B │
+│6/7  ·  sort name…│
+│↑↓ move   ⏎ open …│
+╰──────────────────╯

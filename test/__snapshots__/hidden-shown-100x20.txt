@@ -1,0 +1,20 @@
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│glim ~/Local_Storage/development/WebDev/intentional-projects/tui-file-explorer/test/fixtures/basic│
+│❯ docs/                                     │ 1 item                                              │
+│  src/                                      │ guide.md                                            │
+│  .hidden-file                          7 B │                                                     │
+│  file with space.txt                   7 B │                                                     │
+│  invoice<U+202E>gpj.txt               13 B │                                                     │
+│  package.json                         24 B │                                                     │
+│  README.md                            63 B │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│                                            │                                                     │
+│7 items  ·  sort name ↑  ·  hidden shown                                                          │
+│↑↓ move   ⏎ open   ← up   / filter   . hidden   s sort   ? help   q quit                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

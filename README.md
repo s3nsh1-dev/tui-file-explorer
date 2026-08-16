@@ -3,8 +3,9 @@
 A keyboard-driven terminal file explorer, built as a React component tree with
 [Ink](https://github.com/vadimdemedes/ink).
 
-> **Status: Stage 1 of 3 — walking skeleton.** One pane, cursor movement, directory navigation,
-> clean exit. The two-pane preview, filtering, sorting and colour arrive in Stage 2. See
+> **Status: Stage 2 of 3 — feature complete.** Two panes with a live preview, filtering, sorting,
+> hidden-file toggle, colour, viewport windowing and the alternate screen. Stage 3 adds no features
+> — it is hardening: adversarial inputs, a real-PTY test suite, and release engineering. See
 > [`docs/STATE.md`](docs/STATE.md) for exactly where the project is.
 
 ---
@@ -28,11 +29,20 @@ node dist/cli.js ~/projects # or any path
 | Key | Action |
 |---|---|
 | `↑` `↓` · `k` `j` | move the cursor |
+| `g` · `G` | jump to first / last entry |
+| `PgUp` · `PgDn` | move a screen at a time |
 | `⏎` `→` · `l` | open the highlighted directory |
 | `←` · `h` | go to the parent directory |
+| `/` | filter — `⏎` keeps it, `⎋` cancels and restores your selection |
+| `.` | show or hide dotfiles |
+| `s` · `S` | cycle sort key (name → size → mtime → ext) / reverse it |
+| `?` | help |
 | `q` · `Ctrl-C` | quit |
 
-The cursor clamps at both ends — it does not wrap.
+The cursor clamps at both ends — it does not wrap. Changing the sort keeps your selection on the
+same file rather than on the same row.
+
+Set `NO_COLOR=1` to disable every style, not just colours.
 
 ## Development
 
@@ -69,7 +79,9 @@ defence has something genuine to fail against.
 | [`docs/STATE.md`](docs/STATE.md) | Where the project is *right now*. Read first. |
 | [`docs/00_PROJECT_INSPIRATION.md`](docs/00_PROJECT_INSPIRATION.md) | Why this project exists, and why Ink. Immutable. |
 | [`docs/v1_STAGE_1.md`](docs/v1_STAGE_1.md) | Stage 1's frozen spec, plus its implementation log. |
+| [`docs/v2_STAGE_2.md`](docs/v2_STAGE_2.md) | Stage 2's frozen spec, log and handoff. |
 | [`docs/version/stage1.md`](docs/version/stage1.md) | The Stage 1 story: choices, surprises, bugs, mistakes. |
+| [`docs/version/stage2.md`](docs/version/stage2.md) | The Stage 2 story, plus the Stage 3 refactor plan. |
 | [`docs/adr/`](docs/adr/) | Why each non-obvious decision was made. |
 | [`AGENTS.md`](AGENTS.md) · [`CLAUDE.md`](CLAUDE.md) | The operating contract for agents working here. |
 

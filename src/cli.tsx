@@ -1,7 +1,8 @@
 import process from 'node:process';
 import { render } from 'ink';
 import meow from 'meow';
-import { App, resolveTarget, sanitizeName } from './app.js';
+import { App, resolveTarget } from './app.js';
+import { sanitizeName } from './core/sanitize.js';
 
 const HELP = `
   Usage
@@ -38,10 +39,18 @@ const cli = meow(HELP, {
 const target = await resolveTarget(cli.input.at(0) ?? process.cwd());
 
 if (target.ok) {
-  const instance = render(<App cwd={target.path} />);
+  const instance = render(<App cwd={target.path} />, {
+    // Ink 7 manages the alternate screen buffer itself, including teardown.
+    // AGENTS.md §8 says to write \x1b[?1049h by hand — that advice predates
+    // this option, and hand-rolling it would mean owning the restore path on
+    // every crash and signal route below. Ink ignores it when stdout is not a
+    // TTY, so `glim | head` is unaffected.
+    alternateScreen: true,
+  });
 
   // AGENTS.md §8: a crash must not leave the terminal without a cursor or
-  // stuck in raw mode. unmount() is what restores it, so every exit path runs it.
+  // stuck in raw mode. unmount() is what restores it — including leaving the
+  // alternate screen — so every exit path runs it.
   const restoreAndExit = (code: number): void => {
     instance.unmount();
     process.exitCode = code;
