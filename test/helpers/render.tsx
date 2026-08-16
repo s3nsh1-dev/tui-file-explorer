@@ -216,7 +216,11 @@ export const settle = async (ms = 50): Promise<void> => {
  */
 export const settleStable = async (
   lastFrame: () => string | undefined,
-  { interval = 15, timeout = 3000 }: { interval?: number; timeout?: number } = {},
+  {
+    interval = 15,
+    timeout = 5000,
+    allowLoading = false,
+  }: { interval?: number; timeout?: number; allowLoading?: boolean } = {},
 ): Promise<void> => {
   const deadline = Date.now() + timeout;
   let previous: string | undefined;
@@ -224,7 +228,16 @@ export const settleStable = async (
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, interval));
     const current = lastFrame();
-    if (current !== undefined && current === previous) return;
+
+    // Stability ALONE is not enough. The directory read and the preview read
+    // are separate async chains, and the app is briefly idle between them —
+    // two identical frames can be captured in that gap, with the preview pane
+    // still showing `loading…`. Requiring the loading indicator to be gone
+    // closes it. Found by a flake in "shows a preview pane beside the listing",
+    // which passed 4 runs in 5.
+    const stillLoading = !allowLoading && (current?.includes('loading…') ?? false);
+
+    if (current !== undefined && current === previous && !stillLoading) return;
     previous = current;
   }
 
