@@ -2,6 +2,7 @@ import process from 'node:process';
 import { render } from 'ink';
 import meow from 'meow';
 import { App } from './app.js';
+import { loadConfig } from './core/config.js';
 import { readDirectory } from './core/fs.js';
 import { resolveTarget } from './core/path.js';
 import { sanitizeName } from './core/sanitize.js';
@@ -41,6 +42,14 @@ const cli = meow(HELP, {
 // over a terminal already switched into raw mode and the alternate screen.
 const target = await resolveTarget(cli.input.at(0) ?? process.cwd());
 
+// Config never blocks startup: a malformed file yields defaults plus warnings.
+// Warnings go to stderr BEFORE the alternate screen is entered, or they would
+// be painted onto a screen that is about to be discarded.
+const { config, warnings } = await loadConfig();
+for (const warning of warnings) {
+  process.stderr.write(`glim: config: ${warning}\n`);
+}
+
 if (target.ok && !process.stdout.isTTY) {
   // ── Non-interactive: `glim | head`, `glim > out`, or a CI log ──
   //
@@ -53,14 +62,14 @@ if (target.ok && !process.stdout.isTTY) {
   // directory and looking at it show the same order. Names are sanitized:
   // stdout being a pipe today does not mean it is not a terminal tomorrow.
   const entries = await readDirectory(target.path);
-  const listing = sortEntries(entries, 'name')
-    .filter((entry) => !entry.name.startsWith('.'))
+  const listing = sortEntries(entries, config.sortKey, config.sortReverse)
+    .filter((entry) => config.showHidden || !entry.name.startsWith('.'))
     .map((entry) => sanitizeName(entry.name) + (entry.isDirectory ? '/' : ''))
     .join('\n');
 
   if (listing !== '') process.stdout.write(`${listing}\n`);
 } else if (target.ok) {
-  const instance = render(<App cwd={target.path} />, {
+  const instance = render(<App cwd={target.path} config={config} />, {
     // Ink 7 manages the alternate screen buffer itself, including teardown.
     // AGENTS.md §8 says to write \x1b[?1049h by hand — that advice predates
     // this option, and hand-rolling it would mean owning the restore path on

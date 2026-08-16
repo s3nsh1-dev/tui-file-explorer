@@ -1,3 +1,4 @@
+import { DEFAULT_CONFIG, type Config } from '../core/config.js';
 import type { Entry, Mode, SortKey, Status } from '../core/types.js';
 import { compareEntries, nextSortKey } from '../core/sort.js';
 import { clamp } from '../core/util.js';
@@ -49,7 +50,14 @@ export type State = {
   readonly mode: Mode;
 };
 
-export const initialState = (dir: string): State => ({
+/**
+ * Starting state for a directory.
+ *
+ * Config supplies the three user preferences that persist across runs; every
+ * other field is a fresh-session value. Defaults are used when no config is
+ * given, which is what keeps the golden frames stable.
+ */
+export const initialState = (dir: string, config: Config = DEFAULT_CONFIG): State => ({
   dir,
   status: 'loading',
   error: undefined,
@@ -59,9 +67,9 @@ export const initialState = (dir: string): State => ({
   filter: '',
   filterBackup: null,
   requestId: 0,
-  sortKey: 'name',
-  sortReverse: false,
-  showHidden: false,
+  sortKey: config.sortKey,
+  sortReverse: config.sortReverse,
+  showHidden: config.showHidden,
   mode: 'normal',
 });
 

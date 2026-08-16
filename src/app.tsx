@@ -1,5 +1,6 @@
 import { Box, useApp, useInput, useStdin, useWindowSize } from 'ink';
 import { useEffect, useReducer, useState } from 'react';
+import { DEFAULT_CONFIG, type Config } from './core/config.js';
 import { describeFsError } from './core/errors.js';
 import { readDirectory } from './core/fs.js';
 import { childOf, displayPath, parentOf } from './core/path.js';
@@ -26,20 +27,19 @@ import { usePreview } from './ui/hooks/usePreview.js';
 const CHROME_ROWS = 5;
 /** Left and right border columns. */
 const CHROME_COLUMNS = 2;
-/** Rows the cursor keeps between itself and the viewport edge while scrolling. */
-const SCROLL_MARGIN = 2;
-/** Below this inner width the preview pane is dropped rather than crushed. */
-const PREVIEW_MIN_WIDTH = 70;
-/** Share of the inner width given to the listing when both panes are shown. */
-const LIST_FRACTION = 0.45;
 /** Smallest usable inner width before layout arithmetic stops being meaningful. */
 const MIN_INNER_WIDTH = 8;
 
 export type AppProps = {
   readonly cwd: string;
+  /**
+   * User configuration. Defaults when omitted, so every existing test and
+   * golden frame renders exactly as before (S3-16).
+   */
+  readonly config?: Config;
 };
 
-export const App = ({ cwd }: AppProps) => {
+export const App = ({ cwd, config = DEFAULT_CONFIG }: AppProps) => {
   const { exit } = useApp();
   const stdin = useStdin();
   const { columns, rows } = useWindowSize();
@@ -52,7 +52,9 @@ export const App = ({ cwd }: AppProps) => {
   const rawModeFlag: unknown = stdin.isRawModeSupported;
   const canReadInput = rawModeFlag === true;
 
-  const [state, dispatch] = useReducer(reducer, cwd, initialState);
+  const [state, dispatch] = useReducer(reducer, { cwd, config }, ({ cwd: dir, config: c }) =>
+    initialState(dir, c),
+  );
   const { dir, mode, requestId, visible } = state;
 
   useEffect(() => {
@@ -87,8 +89,8 @@ export const App = ({ cwd }: AppProps) => {
 
   const innerWidth = Math.max(columns - CHROME_COLUMNS, MIN_INNER_WIDTH);
   const bodyHeight = Math.max(rows - CHROME_ROWS, 1);
-  const showPreview = innerWidth >= PREVIEW_MIN_WIDTH;
-  const listWidth = showPreview ? Math.floor(innerWidth * LIST_FRACTION) : innerWidth;
+  const showPreview = innerWidth >= config.previewMinWidth;
+  const listWidth = showPreview ? Math.floor(innerWidth * config.listFraction) : innerWidth;
   const previewWidth = showPreview ? Math.max(innerWidth - listWidth - 2, 1) : 0;
 
   const cursor = cursorIndex(state);
@@ -100,7 +102,7 @@ export const App = ({ cwd }: AppProps) => {
   // stale window first and then correct it as a visible jump.
   // Safe because nextOffset is idempotent: it converges in one extra render.
   const [offset, setOffset] = useState(0);
-  const wantedOffset = nextOffset(offset, cursor, bodyHeight, visible.length, SCROLL_MARGIN);
+  const wantedOffset = nextOffset(offset, cursor, bodyHeight, visible.length, config.scrollMargin);
   if (wantedOffset !== offset) setOffset(wantedOffset);
 
   const windowRows = windowSlice(visible, wantedOffset, bodyHeight);
